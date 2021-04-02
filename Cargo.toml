@@ -1,0 +1,13 @@
+[package]
+name = "chess"
+version = "0.1.0"
+authors = ["Pontus Laestadius <pontus.laestadius@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+colored = "2"
+paw = "1.0.0"
+
+[dependencies.structopt]
+version = "0.3"
+features = ["paw"]
