@@ -59,19 +59,13 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
 
 pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> Option<Sq> {
     for x in 0..8 {
-        let target = Sq::new(
-            from.digit.or(Some(x)).unwrap(),
-            from.letter.or(Some(to.letter)).unwrap(),
-        );
+        let target = Sq::new(from.digit.or(Some(x))?, from.letter.or(Some(to.letter))?);
         if let Some(sq) = board.legal_target(target, to, team, piece) {
             return Some(sq);
         }
     }
     for x in 0..8 {
-        let target = Sq::new(
-            from.digit.or(Some(to.digit)).unwrap(),
-            from.letter.or(Some(x)).unwrap(),
-        );
+        let target = Sq::new(from.digit.or(Some(to.digit))?, from.letter.or(Some(x))?);
         if let Some(sq) = board.legal_target(target, to, team, piece) {
             return Some(sq);
         }

@@ -12,7 +12,7 @@ mod place;
 use crate::board::history::History;
 use crate::board::piece::Piece;
 use crate::board::team::Team;
-use crate::board::{Board, KingStatus};
+use crate::board::{Board, KingStatus, SqStatus};
 use crate::place::entity::Entity;
 use crate::place::optsq::OptSq;
 use crate::place::sq::Sq;

@@ -7,6 +7,12 @@ pub mod history;
 pub mod piece;
 pub mod team;
 
+pub enum SqStatus {
+    None,
+    Blocked,
+    Some(Sq),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KingStatus {
     Safe,
@@ -14,7 +20,7 @@ pub enum KingStatus {
     Mate,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Board {
     pub turn_order: Team,
     pub history: History,
@@ -80,7 +86,7 @@ impl Board {
 
         match self.find(from, Some(&turn), None) {
             None => (), // Panic?
-            Some(entity) => self.history.push(turn, entity.kind, from, to),
+            Some(entity) => self.history.push(turn, entity.kind, from, to, None),
         }
 
         self.board = other.board;
@@ -108,8 +114,8 @@ impl Board {
     }
 
     pub fn in_check(&self, team: Team) -> bool {
-        // #[cfg(test)]
-        // println!("checking if {:?} is in check.", team);
+        #[cfg(test)]
+        println!("checking if {:?} is in check.", team);
 
         let opposite_team = match team {
             Team::White => Team::Black,
@@ -125,6 +131,8 @@ impl Board {
             // #[cfg(test)]
             // println!("{} {:?}: {:?}", sq, piece, translations);
             for t in translations {
+                // #[cfg(test)]
+                // println!("Searching for {}'s King at {} ", team, t);
                 if let Some(_ent) = self.find(t, Some(&team), Some(Piece::King)) {
                     #[cfg(test)]
                     println!(
@@ -135,8 +143,8 @@ impl Board {
                 }
             }
         }
-        // #[cfg(test)]
-        // println!("{:?} is not in check.", team);
+        #[cfg(test)]
+        println!("{:?} is not in check.", team);
         false
     }
 
@@ -262,6 +270,11 @@ impl Board {
     pub fn find(&self, sq: Sq, team: Option<&Team>, piece: Option<Piece>) -> Option<Entity> {
         let mut res = false;
         if let Some(entity) = self.get(sq) {
+            // #[cfg(test)]
+            // println!(
+            //     "Find: sq: {:?}, team: {:?}, piece: {:?} -> {:?}",
+            //     sq, team, piece, entity
+            // );
             if team.is_none() && piece.is_none() {
                 return Some(entity);
             }
@@ -389,7 +402,7 @@ mod tests {
     }
     #[test]
     fn test_init_check_mate() {
-        let mut board = Board::new();
+        let board = Board::new();
         assert_eq!(board.check_mate(Team::Black), false);
         assert_eq!(board.check_mate(Team::White), false)
     }
@@ -430,7 +443,7 @@ mod tests {
     }
     #[test]
     fn test_find_by_team_count() {
-        let mut board = Board::new();
+        let board = Board::new();
         let white_count = board.find_by_team(Team::White);
         let black_count = board.find_by_team(Team::Black);
         assert_eq!(white_count.len(), 16, "White should own 16 pieces");

@@ -5,7 +5,8 @@ use std::iter::Rev;
 use std::str::Chars;
 
 pub fn castle(mut board: &mut Board, str: &str) -> Result<()> {
-    let rank = match board.turn_order {
+    let team = board.turn_order;
+    let rank = match team {
         Team::White => 0,
         Team::Black => 7,
     };
@@ -22,13 +23,55 @@ pub fn castle(mut board: &mut Board, str: &str) -> Result<()> {
         Some(Piece::Rook),
     ) {
         Some(_rook_sq) => {
-            match board.find(Sq::new(rank, 4), Some(&board.turn_order), Some(Piece::King)) {
+            let king_from = Sq::new(rank, 4);
+            let king_to = Sq::new(rank, king_file);
+            let rook_to = Sq::new(rank, rook_to_file);
+            match board.find(king_from, Some(&team), Some(Piece::King)) {
                 Some(_king_sq) => {
-                    // TODO: Validate no pieces are in between the two of them.
-                    let tmp = board.turn_order;
-                    board.translate(Sq::new(rank, 4), Sq::new(rank, king_file))?;
-                    board.turn_order = tmp;
-                    board.translate(Sq::new(rank, rook_from_file), Sq::new(rank, rook_to_file))?;
+                    // Check that the to position is not occupied.
+                    let mut other = board.clone();
+                    match other.get(king_to) {
+                        Some(ent) => {
+                            let msg = format!(
+                                "Castling blocked, King square {} occupied by {:?}",
+                                king_to, ent
+                            );
+                            return Err(Error::new(ErrorKind::Other, msg));
+                        }
+                        None => match other.get(rook_to) {
+                            Some(ent) => {
+                                let msg = format!(
+                                    "Castling blocked, Rook square {} occupied by {:?}",
+                                    rook_to, ent
+                                );
+                                return Err(Error::new(ErrorKind::Other, msg));
+                            }
+                            None => {
+                                let ent = Entity::new(Piece::King, team);
+                                // Pretend that the King and Rook spot are both occupied by a King, to see that we cannot castle into check.
+                                other.place(king_to, ent);
+                                other.place(rook_to, ent);
+                                if other.in_check(team) {
+                                    return Err(Error::new(
+                                        ErrorKind::Other,
+                                        "Cannot castle into check",
+                                    ));
+                                }
+                            }
+                        },
+                    }
+
+                    board.translate(king_from, king_to)?;
+                    board.turn_order = team;
+                    board.translate(Sq::new(rank, rook_from_file), rook_to)?;
+                    board.history.push(
+                        team,
+                        Piece::King,
+                        king_from,
+                        king_to,
+                        Some(str.to_string()),
+                    );
+
                     Ok(())
                 }
                 None => Err(Error::new(ErrorKind::Other, "no King to castle with")),
@@ -78,6 +121,8 @@ pub fn promote(board: &mut Board, mut chars: &mut Rev<Chars>) -> Result<()> {
         opt_sq.digit = Some(6);
     } else if target.digit == 0 {
         opt_sq.digit = Some(1);
+    } else {
+        return Err(Error::new(ErrorKind::Other, "not in position to promote"));
     }
 
     let from = target.union(opt_sq);
@@ -89,23 +134,60 @@ pub fn promote(board: &mut Board, mut chars: &mut Rev<Chars>) -> Result<()> {
         from, target, piece
     );
 
-    let turn_order = board.turn_order;
     board.translate(from, target)?;
-    board.place(target, Entity::new(piece, turn_order));
+    board.place(target, Entity::new(piece, board.turn_order.not()));
 
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::board::history::Move;
     use crate::execute::*;
     use crate::input::*;
     use crate::run;
     use crate::{Board, Entity};
+    use std::io::Result;
     #[test]
     fn test_short_castle() {
         let mut board = Board::new();
         run!(board, "e4", "e5", "Be2", "Be7", "Nf3", "Nf6", "O-O", "O-O", "Re1", "Re8");
+    }
+    #[test]
+    fn test_short_castle_verify_history() -> Result<()> {
+        let mut board = Board::new();
+        run!(board, "e4", "e5", "Be2", "Be7", "Nf3", "Nf6", "O-O");
+        let last_move = board.history.last(Team::White).unwrap();
+        let expected_move = Move {
+            piece: Piece::King,
+            from: Sq::notation("e1")?,
+            to: Sq::notation("g1")?,
+            label: Some("O-O".to_string()),
+        };
+        assert_eq!(
+            last_move, &expected_move,
+            "Last move should be registered as 'O-O'"
+        );
+        assert_eq!(board.history.len(Team::White), 4);
+        assert_eq!(board.history.len(Team::Black), 3);
+
+        Ok(())
+    }
+    #[test]
+    fn test_cannot_castle_into_check() {
+        let mut board = Board::new();
+        run!(board, "e4", "d5", "Ba6", "Bd7", "Nf3", "Bb5");
+        // Verify that the board is the same after failing to castle.
+        let before_board = board.clone();
+        match execute(&mut board, "O-O".chars()) {
+            Ok(_r) => panic!("Should not be able to castle, because of Bb5 is blocking the path."),
+            Err(_e) => (),
+        }
+        let after_board = board;
+        assert_eq!(
+            before_board, after_board,
+            "If we fail to castle, the board should remain the same"
+        );
     }
     #[test]
     fn test_long_castle() {

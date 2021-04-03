@@ -1,4 +1,4 @@
-use crate::{Board, OptSq, Piece, Sq, Team};
+use crate::{Board, OptSq, Piece, Sq, SqStatus, Team};
 
 pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece>) -> Vec<Sq> {
     let mut vec = Vec::new();
@@ -8,104 +8,89 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
         None => return vec,
     };
 
-    let mut lambda = |rank: isize, file: isize| -> Resp {
+    let mut lambda = |rank: isize, file: isize| -> bool {
         let target = match from.mutate(rank, file) {
             Some(sq) => sq,
-            None => return Resp::Blocked,
+            None => return false,
         };
         match board.find(target, None, None) {
             None => {
                 vec.push(target);
-                Resp::Some(target)
+                true
             }
             Some(entity) => {
-                // If it is an enemy piece, we can capture it, but then not go further as it is blocking.
                 if entity.team != team {
                     vec.push(target);
                 }
-                Resp::None
+                false
             }
         }
     };
 
     for c in 1..8 {
-        match lambda(c, c) {
-            Resp::Some(_sq) => (),
-            Resp::Blocked => break,
-            Resp::None => break,
+        if !lambda(c, c) {
+            break;
         }
     }
     for c in 1..8 {
-        match lambda(-c, -c) {
-            Resp::Some(_sq) => (),
-            Resp::Blocked => break,
-            Resp::None => break,
+        if !lambda(-c, -c) {
+            break;
         }
     }
     for c in 1..8 {
-        match lambda(-c, c) {
-            Resp::Some(_sq) => (),
-            Resp::Blocked => break,
-            Resp::None => break,
+        if !lambda(-c, c) {
+            break;
         }
     }
     for c in 1..8 {
-        match lambda(c, -c) {
-            Resp::Some(_sq) => (),
-            Resp::Blocked => break,
-            Resp::None => break,
+        if !lambda(c, -c) {
+            break;
         }
     }
 
     vec
 }
 
-enum Resp {
-    Some(Sq),
-    None,
-    Blocked,
-}
-
 pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> Option<Sq> {
-    let lambda = |rank: isize, file: isize| -> Resp {
+    let lambda = |rank: isize, file: isize| -> SqStatus {
         let i_rank = to.digit as isize + rank as isize;
         let i_file = to.letter as isize + file as isize;
         if !Sq::valid_idx(i_rank, i_file) {
-            return Resp::Blocked;
+            return SqStatus::Blocked;
         };
         let target = Sq::new(i_rank as usize, i_file as usize).union(from);
         if let Some(sq) = board.legal_target(target, to, team, piece) {
-            return Resp::Some(sq);
+            return SqStatus::Some(sq);
         }
-        Resp::None
+        SqStatus::None
     };
 
     for c in 1..8 {
         match lambda(c, c) {
-            Resp::Some(sq) => return Some(sq),
-            Resp::Blocked => break,
-            Resp::None => (),
+            SqStatus::Some(sq) => return Some(sq),
+            SqStatus::Blocked => break,
+            SqStatus::None => (),
         }
     }
     for c in 1..8 {
         match lambda(-c, -c) {
-            Resp::Some(sq) => return Some(sq),
-            Resp::Blocked => break,
-            Resp::None => (),
+            SqStatus::Some(sq) => return Some(sq),
+            SqStatus::Blocked => break,
+            SqStatus::None => (),
         }
     }
     for c in 1..8 {
         match lambda(-c, c) {
-            Resp::Some(sq) => return Some(sq),
-            Resp::Blocked => break,
-            Resp::None => (),
+            SqStatus::Some(sq) => return Some(sq),
+            SqStatus::Blocked => break,
+            SqStatus::None => (),
         }
     }
     for c in 1..8 {
         match lambda(c, -c) {
-            Resp::Some(sq) => return Some(sq),
-            Resp::Blocked => break,
-            Resp::None => (),
+            SqStatus::Some(sq) => return Some(sq),
+            SqStatus::Blocked => break,
+            SqStatus::None => (),
         }
     }
 

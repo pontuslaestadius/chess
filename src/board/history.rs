@@ -5,9 +5,10 @@ pub struct Move {
     pub piece: Piece,
     pub from: Sq,
     pub to: Sq,
+    pub label: Option<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct History {
     white_moves: Vec<Move>,
     black_moves: Vec<Move>,
@@ -36,9 +37,17 @@ impl History {
         let vec = self.resolve_type(team);
         vec.last()
     }
-    pub fn push(&mut self, team: Team, piece: Piece, from: Sq, to: Sq) {
-        let mov = Move { piece, from, to };
+    pub fn push(&mut self, team: Team, piece: Piece, from: Sq, to: Sq, mut label: Option<String>) {
+        let mov = Move {
+            piece,
+            from,
+            to,
+            label,
+        };
         self.resolve_type_mut(team).push(mov);
+    }
+    pub fn pop(&mut self, team: Team) -> Option<Move> {
+        self.resolve_type_mut(team).pop()
     }
     #[allow(dead_code)]
     pub fn tuple(&self, idx: usize) -> [&Move; 2] {
@@ -47,9 +56,8 @@ impl History {
             self.black_moves.get(idx).unwrap(),
         ]
     }
-    #[allow(dead_code)]
-    pub fn len(&self) -> usize {
-        self.black_moves.len()
+    pub fn len(&self, team: Team) -> usize {
+        self.resolve_type(team).len()
     }
 }
 
@@ -71,6 +79,7 @@ mod tests {
             piece: Piece::Pawn,
             from: Sq::notation("a2")?,
             to: Sq::notation("a4")?,
+            label: None,
         };
         assert_eq!(last_move, Some(&expected_mov));
         Ok(())
