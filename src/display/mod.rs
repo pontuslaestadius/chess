@@ -1,13 +1,12 @@
 extern crate colored;
 use crate::board::Board;
 use crate::colored::Colorize;
-use crate::place::entity::Entity;
 use crate::place::sq::Sq;
-use crate::{Piece, Team};
+use crate::Team;
 use std::io::Error;
 
 pub fn present(board: &Board) {
-    print!("{}[2J", 27 as char);
+    // print!("{}[2J", 27 as char);
     for (x, row) in board.board.iter().rev().enumerate() {
         for (y, column) in row.iter().enumerate() {
             if y == 0 {
@@ -45,6 +44,9 @@ pub fn present(board: &Board) {
                 print!("   {}. {} {}", x, pad_string(w, 7), pad_string(b, 7));
             }
         }
+        if x == 7 {
+            print!("  Eval: {}   ", board.evaluation());
+        }
         println!();
     }
     println!("    A  B  C  D  E  F  G  H ");
@@ -71,24 +73,30 @@ fn color_team(team: &Team, label: &str) -> colored::ColoredString {
         Team::Black => label.black(),
     }
 }
+
+#[allow(dead_code)]
 fn color_team_rev(team: &Team, label: &str) -> colored::ColoredString {
     match team {
         Team::White => label.black(),
         Team::Black => label.white(),
     }
 }
+
 fn color_team_background(team: &Team, label: &str) -> colored::ColoredString {
     match team {
         Team::White => label.on_white(),
         Team::Black => label.on_black(),
     }
 }
+
+#[allow(dead_code)]
 fn color_team_background_rev(team: &Team, label: &str) -> colored::ColoredString {
     match team {
         Team::White => label.on_black(),
         Team::Black => label.on_white(),
     }
 }
+
 fn pad_string(mut string: String, len: usize) -> String {
     while string.len() < len {
         string.push_str(" ");

@@ -24,3 +24,13 @@ impl Team {
         }
     }
 }
+
+impl Team {
+    #[allow(dead_code)]
+    pub fn abrev(&self) -> &str {
+        match self {
+            Team::White => "W",
+            Team::Black => "B",
+        }
+    }
+}

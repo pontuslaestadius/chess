@@ -21,23 +21,27 @@ impl History {
             black_moves: Vec::new(),
         }
     }
+
     fn resolve_type(&self, team: Team) -> &Vec<Move> {
         match team {
             Team::White => &self.white_moves,
             Team::Black => &self.black_moves,
         }
     }
+
     fn resolve_type_mut(&mut self, team: Team) -> &mut Vec<Move> {
         match team {
             Team::White => &mut self.white_moves,
             Team::Black => &mut self.black_moves,
         }
     }
+
     pub fn last(&self, team: Team) -> Option<&Move> {
         let vec = self.resolve_type(team);
         vec.last()
     }
-    pub fn push(&mut self, team: Team, piece: Piece, from: Sq, to: Sq, mut label: Option<String>) {
+
+    pub fn push(&mut self, team: Team, piece: Piece, from: Sq, to: Sq, label: Option<String>) {
         let mov = Move {
             piece,
             from,
@@ -46,16 +50,21 @@ impl History {
         };
         self.resolve_type_mut(team).push(mov);
     }
+
+    #[allow(dead_code)]
     pub fn pop(&mut self, team: Team) -> Option<Move> {
         self.resolve_type_mut(team).pop()
     }
+
     #[allow(dead_code)]
     pub fn tuple(&self, idx: usize) -> [Option<&Move>; 2] {
         [self.white_moves.get(idx), self.black_moves.get(idx)]
     }
+
     pub fn get(&self, team: Team, idx: usize) -> Option<&Move> {
         self.resolve_type(team).get(idx)
     }
+
     pub fn len(&self, team: Team) -> usize {
         self.resolve_type(team).len()
     }

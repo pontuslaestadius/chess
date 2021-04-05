@@ -12,12 +12,14 @@ mod opponent;
 use opponent::Opponent;
 
 pub fn manual_game_loop(white: String, black: String) -> io::Result<()> {
-    let white = Opponent::from_str(&white).unwrap().to_struct();
-    let black = Opponent::from_str(&black).unwrap().to_struct();
+    let white = Opponent::from_str(&white).unwrap().init();
+    let black = Opponent::from_str(&black).unwrap().init();
+    let short_dur = time::Duration::from_millis(120);
 
     let mut board = Board::new();
     display::present(&board);
     loop {
+        thread::sleep(short_dur);
         let result = match board.turn_order {
             Team::White => white.action(&mut board),
             Team::Black => black.action(&mut board),
@@ -29,7 +31,9 @@ pub fn manual_game_loop(white: String, black: String) -> io::Result<()> {
                 continue;
             }
         };
+        thread::sleep(short_dur);
         display::present(&board);
+        thread::sleep(short_dur);
     }
 }
 
@@ -53,7 +57,7 @@ pub fn automatic_game_loop(pgn: String) -> io::Result<()> {
             // #[cfg(debug)]
             if debug && line.starts_with("[FICSGames") {
                 // meta = Vec::new();
-                thread::sleep(short_dur);
+                // thread::sleep(short_dur);
                 println!("{}. {}", game_count, line);
             }
             continue;

@@ -72,6 +72,9 @@ pub fn castle(mut board: &mut Board, str: &str) -> Result<()> {
                         Some(str.to_string()),
                     );
 
+                    // Revoke the team from castling again.
+                    board.castling.revoke(team);
+
                     Ok(())
                 }
                 None => Err(Error::new(ErrorKind::Other, "no King to castle with")),

@@ -20,7 +20,7 @@ impl FromStr for Opponent {
 }
 
 impl Opponent {
-    pub fn to_struct(self) -> Box<dyn computer::Playable> {
+    pub fn init(self) -> Box<dyn computer::Playable> {
         match self {
             Opponent::Player => Box::new(computer::player::Player::new()),
             Opponent::Computer => Box::new(computer::Computer::new()),

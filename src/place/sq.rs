@@ -79,6 +79,9 @@ impl Sq {
         };
         Some(Sq::new(i_rank as usize, i_file as usize))
     }
+    pub fn get_file_char(&self) -> char {
+        (97 + self.letter as u8) as char
+    }
 }
 
 impl Sub for Sq {

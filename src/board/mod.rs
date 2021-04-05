@@ -3,6 +3,7 @@ use crate::place::sq::Sq;
 use crate::{History, Piece, Team};
 use std::io::{Error, ErrorKind, Result};
 
+pub mod castling;
 pub mod history;
 pub mod piece;
 pub mod team;
@@ -25,6 +26,9 @@ pub struct Board {
     pub turn_order: Team,
     pub history: History,
     pub board: [[Option<Entity>; 8]; 8],
+    pub en_passant_target_square: Option<Sq>,
+    pub halfmove_clock: usize,
+    pub castling: castling::Castling,
 }
 
 impl Board {
@@ -55,6 +59,9 @@ impl Board {
             board[6][n] = Some(Entity::new(Piece::Pawn, b));
         }
         Board {
+            halfmove_clock: 0,
+            en_passant_target_square: None,
+            castling: castling::Castling::new(),
             turn_order: Team::White,
             history: History::new(),
             board,
@@ -89,12 +96,13 @@ impl Board {
             Some(entity) => self.history.push(turn, entity.kind, from, to, Some(label)),
         }
 
-        self.board = other.board;
-        self.turn_order = other.turn_order;
-
         // Move was alright, register it.
         // FIXME: should probably be a move, self = other.
-        // self.translate(from, to)?;
+        self.board = other.board;
+        self.turn_order = other.turn_order;
+        self.castling = other.castling;
+        self.en_passant_target_square = other.en_passant_target_square;
+        self.halfmove_clock = other.halfmove_clock;
 
         #[cfg(test)]
         println!("[board/mod]: {} -> {}", from, to);
@@ -114,8 +122,8 @@ impl Board {
     }
 
     pub fn in_check(&self, team: Team) -> bool {
-        #[cfg(test)]
-        println!("checking if {:?} is in check.", team);
+        // #[cfg(test)]
+        // println!("checking if {:?} is in check.", team);
 
         let opposite_team = match team {
             Team::White => Team::Black,
@@ -183,6 +191,62 @@ impl Board {
         }
         result
     }
+    /// Generates a FEN for the given board position.
+    /// https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+    pub fn fen(&self) -> String {
+        let mut res = String::new();
+
+        // Specify u8 to be able to cast to char.
+        let mut cur_empty_square: u8 = 0;
+
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let sq = Sq::new(rank, file);
+                if let Some(entity) = self.find(sq, None, None) {
+                    if cur_empty_square > 0 {
+                        res.push_str(&format!("{}", cur_empty_square));
+                        cur_empty_square = 0;
+                    }
+                    match entity.team {
+                        Team::White => res.push_str(entity.kind.display()),
+                        Team::Black => res.push_str(&entity.kind.display().to_lowercase()),
+                    };
+                } else {
+                    cur_empty_square += 1;
+                }
+            }
+            if cur_empty_square > 0 {
+                res.push_str(&format!("{}", cur_empty_square));
+                cur_empty_square = 0;
+            }
+            // Last row does not need a row delimitor.
+            if rank != 0 {
+                res.push('/');
+            }
+        }
+        res.push(' ');
+
+        // Active color
+        res.push_str(&self.turn_order.abrev().to_lowercase());
+        res.push(' ');
+
+        // Castling availability
+        res.push_str(&self.castling.fen());
+        res.push(' ');
+
+        // En passant target square in algebraic notatio
+        res.push_str("-");
+        res.push(' ');
+
+        // number of halfmoves since the last capture or pawn advance
+        res.push_str(&format!("{}", self.halfmove_clock));
+        res.push(' ');
+
+        // Fullmove number: The number of the full move. It starts at 1, and is incremented after Black's move.
+        res.push_str(&format!("{}", self.history.len(Team::Black) + 1));
+
+        res
+    }
 
     pub fn stalemate(&self, team: Team) -> bool {
         // Overwrite existing turn order to mimick if the player could move.
@@ -241,26 +305,40 @@ impl Board {
                 if to_entity.kind == Piece::King {
                     return Err(Error::new(ErrorKind::Other, "illegal move, target is King"));
                 }
+                if from_entity.kind == Piece::Pawn {
+                    label.push(from.get_file_char());
+                }
                 label.push_str("x");
+                self.halfmove_clock = 0;
                 self.board[to.digit][to.letter] = self.board[from.digit][from.letter];
                 self.board[from.digit][from.letter] = None;
             }
             None => {
+                self.halfmove_clock += 1;
                 // Check if en passant
-                if from_entity.kind == Piece::Pawn {
-                    // If it was a capture move but didn't land on an occupied square.
-                    if from.letter != to.letter {
-                        let diff = from.digit as isize - to.digit as isize;
-                        let clean_up_sq = Sq::new((to.digit as isize + diff) as usize, to.letter);
-                        match self.find(clean_up_sq, Some(&self.not_turn()), Some(Piece::Pawn)) {
-                            Some(_) => {
-                                label.push_str("x");
-                                self.board[clean_up_sq.digit][clean_up_sq.letter] = None
+                // If it was a capture move but didn't land on an occupied square.
+                #[cfg(test)]
+                println!(
+                    "[board/mod]: en passant square: {:?}",
+                    self.en_passant_target_square
+                );
+                if from_entity.kind == Piece::Pawn
+                    && self.en_passant_target_square.is_some()
+                    && from.letter != to.letter
+                {
+                    let diff = from.digit as isize - to.digit as isize;
+                    let clean_up_sq = Sq::new((to.digit as isize + diff) as usize, to.letter);
+                    match self.find(clean_up_sq, Some(&self.not_turn()), Some(Piece::Pawn)) {
+                        Some(_) => {
+                            if from_entity.kind == Piece::Pawn {
+                                label.push(from.get_file_char());
                             }
-                            None => {
-                                let msg = format!("illegal en passant, no Pawn at {}", clean_up_sq);
-                                return Err(Error::new(ErrorKind::Other, msg));
-                            }
+                            label.push_str("x");
+                            self.board[clean_up_sq.digit][clean_up_sq.letter] = None
+                        }
+                        None => {
+                            let msg = format!("illegal en passant, no Pawn at {}", clean_up_sq);
+                            return Err(Error::new(ErrorKind::Other, msg));
                         }
                     }
                 }
@@ -273,6 +351,29 @@ impl Board {
             Team::Black => Team::White,
         };
         label.push_str(format!("{}", to).as_ref());
+
+        // Only pawn moves that moved 2 squares.
+
+        if from_entity.kind == Piece::Pawn {
+            self.halfmove_clock = 0;
+            let two_or_not_to_two = isize::abs(from.digit as isize - to.digit as isize);
+            #[cfg(test)]
+            println!(
+                "[board/mod]: from_entity: {:?} from {} to {}, two: {}",
+                from_entity, from, to, two_or_not_to_two
+            );
+
+            if two_or_not_to_two == 2 {
+                #[cfg(test)]
+                println!("[board/mod]: en passant allowed");
+                self.en_passant_target_square =
+                    Some(Sq::new((to.digit + from.digit) / 2, to.letter));
+            } else {
+                #[cfg(test)]
+                println!("[board/mod]: en passant disallowed");
+                self.en_passant_target_square = None;
+            }
+        }
 
         Ok(label)
     }
@@ -371,9 +472,43 @@ mod tests {
         Board::new();
     }
     #[test]
+    fn test_en_passant_square() {
+        let mut board = Board::new();
+        run!(board, "e4");
+        assert_eq!(
+            board.en_passant_target_square,
+            Some(Sq::notation("e3").unwrap())
+        );
+    }
+    #[test]
+    fn test_halfclock() {
+        let mut board = Board::new();
+        assert_eq!(board.halfmove_clock, 0);
+        run!(board, "e4");
+        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        run!(board, "Nc6");
+        assert_eq!(board.halfmove_clock, 1); // Knight move increments
+        run!(board, "e5");
+        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        run!(board, "f6");
+        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        run!(board, "exf6");
+        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        run!(board, "Nf6");
+        assert_eq!(board.halfmove_clock, 0); // Capture resets
+    }
+    #[test]
     fn test_evaluation() {
         let board = Board::new();
         assert_eq!(board.evaluation(), 0, "Initial evaluation is awlays 0");
+    }
+    #[test]
+    fn test_initial_fen() {
+        let board = Board::new();
+        assert_eq!(
+            board.fen(),
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string()
+        );
     }
     #[test]
     fn test_get_rooked() {
