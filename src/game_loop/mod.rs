@@ -9,28 +9,18 @@ use std::str::FromStr;
 use std::{thread, time};
 
 mod opponent;
-use crate::computer;
 use opponent::Opponent;
 
-fn opponent_to_action(opponent: Opponent) -> &'static dyn Fn(&mut Board) -> io::Result<()> {
-    match opponent {
-        Opponent::Player => &computer::player::action,
-        Opponent::Computer => &computer::dummy::action,
-    }
-}
-
 pub fn manual_game_loop(white: String, black: String) -> io::Result<()> {
-    let white_action = opponent_to_action(Opponent::from_str(&white).unwrap());
-    let black_action = opponent_to_action(Opponent::from_str(&black).unwrap());
-
-    let short_dur = time::Duration::from_millis(150);
+    let white = Opponent::from_str(&white).unwrap().to_struct();
+    let black = Opponent::from_str(&black).unwrap().to_struct();
 
     let mut board = Board::new();
     display::present(&board);
     loop {
         let result = match board.turn_order {
-            Team::White => white_action(&mut board),
-            Team::Black => black_action(&mut board),
+            Team::White => white.action(&mut board),
+            Team::Black => black.action(&mut board),
         };
         match result {
             Ok(_) => (),
@@ -40,8 +30,6 @@ pub fn manual_game_loop(white: String, black: String) -> io::Result<()> {
             }
         };
         display::present(&board);
-
-        thread::sleep(short_dur);
     }
 }
 

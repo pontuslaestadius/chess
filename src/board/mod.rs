@@ -78,7 +78,7 @@ impl Board {
         let mut other = self.clone();
         let turn = other.turn_order;
 
-        other.translate(from, to)?;
+        let label = other.translate(from, to)?;
         if other.in_check(turn) {
             let msg = format!("illegal move for {}, places yourself in check.", turn);
             return Err(Error::new(ErrorKind::Other, msg));
@@ -86,7 +86,7 @@ impl Board {
 
         match self.find(from, Some(&turn), None) {
             None => (), // Panic?
-            Some(entity) => self.history.push(turn, entity.kind, from, to, None),
+            Some(entity) => self.history.push(turn, entity.kind, from, to, Some(label)),
         }
 
         self.board = other.board;
@@ -167,6 +167,23 @@ impl Board {
         })
     }
 
+    pub fn evaluation(&self) -> isize {
+        // Get piece values of all entities for each team.
+        let mut result: isize = 0;
+        for rank in 0..8 {
+            for file in 0..8 {
+                let sq = Sq::new(rank, file);
+                if let Some(entity) = self.find(sq, None, None) {
+                    match entity.team {
+                        Team::White => result += entity.kind.value() as isize,
+                        Team::Black => result -= entity.kind.value() as isize,
+                    }
+                }
+            }
+        }
+        result
+    }
+
     pub fn stalemate(&self, team: Team) -> bool {
         // Overwrite existing turn order to mimick if the player could move.
         let mut other = self.clone();
@@ -189,7 +206,9 @@ impl Board {
             true
         })
     }
-    pub fn translate(&mut self, from: Sq, to: Sq) -> Result<()> {
+    pub fn translate(&mut self, from: Sq, to: Sq) -> Result<String> {
+        let mut label: String = String::new();
+
         let from_entity = match self.get(from) {
             Some(ent) => {
                 if ent.team != self.turn_order {
@@ -209,6 +228,8 @@ impl Board {
             }
         };
 
+        label.push_str(from_entity.kind.to_str());
+
         match self.get(to) {
             Some(to_entity) => {
                 if from_entity.team == to_entity.team {
@@ -220,6 +241,7 @@ impl Board {
                 if to_entity.kind == Piece::King {
                     return Err(Error::new(ErrorKind::Other, "illegal move, target is King"));
                 }
+                label.push_str("x");
                 self.board[to.digit][to.letter] = self.board[from.digit][from.letter];
                 self.board[from.digit][from.letter] = None;
             }
@@ -231,7 +253,10 @@ impl Board {
                         let diff = from.digit as isize - to.digit as isize;
                         let clean_up_sq = Sq::new((to.digit as isize + diff) as usize, to.letter);
                         match self.find(clean_up_sq, Some(&self.not_turn()), Some(Piece::Pawn)) {
-                            Some(_) => self.board[clean_up_sq.digit][clean_up_sq.letter] = None,
+                            Some(_) => {
+                                label.push_str("x");
+                                self.board[clean_up_sq.digit][clean_up_sq.letter] = None
+                            }
                             None => {
                                 let msg = format!("illegal en passant, no Pawn at {}", clean_up_sq);
                                 return Err(Error::new(ErrorKind::Other, msg));
@@ -247,8 +272,9 @@ impl Board {
             Team::White => Team::Black,
             Team::Black => Team::White,
         };
+        label.push_str(format!("{}", to).as_ref());
 
-        Ok(())
+        Ok(label)
     }
 
     pub fn legal_target(&self, from: Sq, to: Sq, team: Team, piece: Piece) -> Option<Sq> {
@@ -343,6 +369,11 @@ mod tests {
     #[test]
     fn test_new_board() {
         Board::new();
+    }
+    #[test]
+    fn test_evaluation() {
+        let board = Board::new();
+        assert_eq!(board.evaluation(), 0, "Initial evaluation is awlays 0");
     }
     #[test]
     fn test_get_rooked() {

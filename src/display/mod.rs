@@ -6,18 +6,6 @@ use crate::place::sq::Sq;
 use crate::{Piece, Team};
 use std::io::Error;
 
-fn enum_to_label(entity: &Entity) -> String {
-    let label: colored::ColoredString = match entity.kind {
-        Piece::Bishop => color_team(&entity.team, "B"),
-        Piece::King => color_team(&entity.team, "K"),
-        Piece::Rook => color_team(&entity.team, "R"),
-        Piece::Pawn => color_team(&entity.team, "P"),
-        Piece::Queen => color_team(&entity.team, "Q"),
-        Piece::Knight => color_team(&entity.team, "N"),
-    };
-    label.to_string()
-}
-
 pub fn present(board: &Board) {
     print!("{}[2J", 27 as char);
     for (x, row) in board.board.iter().rev().enumerate() {
@@ -26,7 +14,10 @@ pub fn present(board: &Board) {
                 print!(" {} ", row.len() - x);
             }
             let label: colored::ColoredString = match column {
-                Some(piece) => enum_to_label(&piece).black(),
+                Some(ent) => color_team(&ent.team, ent.kind.display())
+                    .to_string()
+                    .black(),
+
                 None => " ".black(),
             };
             let mut label = format!(" {} ", label);
@@ -40,11 +31,19 @@ pub fn present(board: &Board) {
         if x == 0 {
             print_player_to_move(&board.turn_order);
         } else {
-            // let len = board.history.len();
-            // if len >= x {
-            //     let [w, b] = board.history.tuple(x - 1);
-            //     print!("{}. {} {}", x, w.sq, b.sq);
-            // }
+            let len = board.history.len(Team::White);
+            if len > 0 && len >= x {
+                let [w, b] = board.history.tuple(x - 1);
+                let w = match w {
+                    Some(x) => x.label.clone().unwrap(),
+                    None => String::new(),
+                };
+                let b = match b {
+                    Some(x) => x.label.clone().unwrap(),
+                    None => String::new(),
+                };
+                print!("   {}. {} {}", x, pad_string(w, 7), pad_string(b, 7));
+            }
         }
         println!();
     }
@@ -52,10 +51,13 @@ pub fn present(board: &Board) {
 }
 
 fn print_player_to_move(team: &Team) {
-    match team {
-        Team::White => print!("{}", "        White to Move       ".black().on_white()),
-        Team::Black => print!("{}", "        Black to Move       ".white().on_black()),
-    };
+    print!(
+        "{}",
+        color_team_background(
+            team,
+            &color_team(team, &format!("    {} to Move    ", team))
+        )
+    );
 }
 
 pub fn print_error(err: Error) {
@@ -68,4 +70,28 @@ fn color_team(team: &Team, label: &str) -> colored::ColoredString {
         Team::White => label.white(),
         Team::Black => label.black(),
     }
+}
+fn color_team_rev(team: &Team, label: &str) -> colored::ColoredString {
+    match team {
+        Team::White => label.black(),
+        Team::Black => label.white(),
+    }
+}
+fn color_team_background(team: &Team, label: &str) -> colored::ColoredString {
+    match team {
+        Team::White => label.on_white(),
+        Team::Black => label.on_black(),
+    }
+}
+fn color_team_background_rev(team: &Team, label: &str) -> colored::ColoredString {
+    match team {
+        Team::White => label.on_black(),
+        Team::Black => label.on_white(),
+    }
+}
+fn pad_string(mut string: String, len: usize) -> String {
+    while string.len() < len {
+        string.push_str(" ");
+    }
+    string
 }

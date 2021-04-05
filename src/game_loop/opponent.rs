@@ -1,6 +1,4 @@
 use crate::computer;
-use crate::Board;
-use std::io;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -22,11 +20,10 @@ impl FromStr for Opponent {
 }
 
 impl Opponent {
-    #[allow(dead_code)]
-    fn opponent_to_action(&self) -> &'static dyn Fn(&mut Board) -> io::Result<()> {
+    pub fn to_struct(self) -> Box<dyn computer::Playable> {
         match self {
-            Opponent::Player => &computer::player::action,
-            Opponent::Computer => &computer::dummy::action,
+            Opponent::Player => Box::new(computer::player::Player::new()),
+            Opponent::Computer => Box::new(computer::Computer::new()),
         }
     }
 }

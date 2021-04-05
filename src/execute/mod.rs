@@ -145,7 +145,7 @@ pub fn execute(mut board: &mut Board, input: Chars) -> Result<EResult> {
     let did_i_check_them = board.in_check(board.turn_order);
 
     // If I expected to have checked them, but the results differ from my expectation,
-    // These are more for testing purposes.
+    // These are´for testing purposes.
     match king_status {
         KingStatus::Safe => {
             // Check for stalemate
@@ -224,8 +224,8 @@ mod tests {
     fn test_in_fake_mate() {
         let mut board = Board::new();
         match execute(&mut board, "e4#".chars()) {
-            Ok(_r) => panic!("e4 is not mate you dummy"),
-            Err(_e) => (),
+            Ok(_) => panic!(format!("e4 is not mate you dummy")),
+            Err(_) => (),
         }
     }
     #[test]

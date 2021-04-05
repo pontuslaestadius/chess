@@ -50,11 +50,11 @@ impl History {
         self.resolve_type_mut(team).pop()
     }
     #[allow(dead_code)]
-    pub fn tuple(&self, idx: usize) -> [&Move; 2] {
-        [
-            self.white_moves.get(idx).unwrap(),
-            self.black_moves.get(idx).unwrap(),
-        ]
+    pub fn tuple(&self, idx: usize) -> [Option<&Move>; 2] {
+        [self.white_moves.get(idx), self.black_moves.get(idx)]
+    }
+    pub fn get(&self, team: Team, idx: usize) -> Option<&Move> {
+        self.resolve_type(team).get(idx)
     }
     pub fn len(&self, team: Team) -> usize {
         self.resolve_type(team).len()
@@ -79,7 +79,7 @@ mod tests {
             piece: Piece::Pawn,
             from: Sq::notation("a2")?,
             to: Sq::notation("a4")?,
-            label: None,
+            label: Some("a4".to_string()),
         };
         assert_eq!(last_move, Some(&expected_mov));
         Ok(())

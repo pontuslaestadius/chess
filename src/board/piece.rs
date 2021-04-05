@@ -40,6 +40,26 @@ impl Piece {
             _ => None,
         }
     }
+    pub fn to_str(&self) -> &str {
+        match self {
+            Piece::Rook => "R",
+            Piece::Bishop => "B",
+            Piece::Knight => "N",
+            Piece::King => "K",
+            Piece::Queen => "Q",
+            Piece::Pawn => "",
+        }
+    }
+    pub fn display(&self) -> &str {
+        match self {
+            Piece::Rook => "R",
+            Piece::Bishop => "B",
+            Piece::Knight => "N",
+            Piece::King => "K",
+            Piece::Queen => "Q",
+            Piece::Pawn => "P",
+        }
+    }
     pub fn get_translations(
         &self,
     ) -> &'static (dyn Fn(&Board, Sq, Team, Option<Piece>) -> Vec<Sq> + 'static) {
