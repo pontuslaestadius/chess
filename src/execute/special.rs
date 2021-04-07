@@ -1,4 +1,4 @@
-use crate::input::{chars_to_sq, position_indicator};
+use crate::input::chars_to_sq;
 use crate::{Board, Entity, OptSq, Piece, Sq, Team};
 use std::io::{Error, ErrorKind, Result};
 use std::iter::Rev;
@@ -115,8 +115,7 @@ pub fn promote(board: &mut Board, mut chars: &mut Rev<Chars>) -> Result<()> {
     let mut opt_sq = OptSq::new();
     if let Some(ch) = chars.next() {
         if ch == 'x' {
-            let next = chars.next().unwrap();
-            opt_sq = position_indicator(next);
+            opt_sq = chars.next().unwrap().into();
         }
     }
 

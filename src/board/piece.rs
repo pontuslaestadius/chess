@@ -1,5 +1,6 @@
 use crate::execute::{bishop, king, knight, pawn, queen, rook};
 use crate::{Board, OptSq, Sq, Team};
+use std::convert::From;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -28,6 +29,33 @@ impl FromStr for Piece {
     }
 }
 
+impl From<char> for Piece {
+    fn from(item: char) -> Self {
+        match item {
+            'B' | 'b' => Piece::Bishop,
+            'K' | 'k' => Piece::King,
+            'R' | 'r' => Piece::Rook,
+            'P' | 'p' => Piece::Pawn,
+            'Q' | 'q' => Piece::Queen,
+            'N' | 'n' => Piece::Knight,
+            _ => panic!("cannot cast char '{}' into Piece", item),
+        }
+    }
+}
+
+impl From<Piece> for &str {
+    fn from(item: Piece) -> Self {
+        match item {
+            Piece::Rook => "R",
+            Piece::Bishop => "B",
+            Piece::Knight => "N",
+            Piece::King => "K",
+            Piece::Queen => "Q",
+            Piece::Pawn => "P",
+        }
+    }
+}
+
 impl Piece {
     pub fn from_char(input: char) -> Option<Piece> {
         match input {
@@ -48,16 +76,6 @@ impl Piece {
             Piece::King => "K",
             Piece::Queen => "Q",
             Piece::Pawn => "",
-        }
-    }
-    pub fn display(&self) -> &str {
-        match self {
-            Piece::Rook => "R",
-            Piece::Bishop => "B",
-            Piece::Knight => "N",
-            Piece::King => "K",
-            Piece::Queen => "Q",
-            Piece::Pawn => "P",
         }
     }
     pub fn get_translations(

@@ -12,6 +12,32 @@ pub struct Castling {
     pub black: CastlingAvailability,
 }
 
+impl From<&str> for Castling {
+    fn from(item: &str) -> Self {
+        let mut ca = Castling {
+            white: CastlingAvailability {
+                long: false,
+                short: false,
+            },
+            black: CastlingAvailability {
+                long: false,
+                short: false,
+            },
+        };
+        for ch in item.chars() {
+            match ch {
+                'q' => ca.black.long = true,
+                'Q' => ca.white.long = true,
+                'k' => ca.black.short = true,
+                'K' => ca.white.short = true,
+                '-' => break,
+                _ => break,
+            }
+        }
+        ca
+    }
+}
+
 impl Castling {
     pub fn new() -> Self {
         Castling {
@@ -74,5 +100,26 @@ mod tests {
         castling.revoke(Team::White);
         castling.revoke(Team::Black);
         assert_eq!(castling.fen(), "-");
+    }
+    #[test]
+    fn test_from_str() {
+        let expected_castling = Castling::new();
+        let actual_castling: Castling = "KQkq".into();
+        assert_eq!(expected_castling, actual_castling);
+    }
+    #[test]
+    fn test_from_str_2() {
+        let expected_castling = Castling {
+            white: CastlingAvailability {
+                long: false,
+                short: false,
+            },
+            black: CastlingAvailability {
+                long: false,
+                short: false,
+            },
+        };
+        let actual_castling: Castling = "-".into();
+        assert_eq!(expected_castling, actual_castling);
     }
 }

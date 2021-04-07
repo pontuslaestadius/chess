@@ -16,6 +16,16 @@ impl fmt::Display for Team {
     }
 }
 
+impl From<&str> for Team {
+    fn from(item: &str) -> Self {
+        match item {
+            "w" | "White" | "white" => Team::White,
+            "b" | "Black" | "black" => Team::Black,
+            _ => panic!("Invalid item provided to decode as team '{}'", item),
+        }
+    }
+}
+
 impl Team {
     pub fn not(&self) -> Team {
         match self {

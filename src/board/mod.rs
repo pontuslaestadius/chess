@@ -2,11 +2,13 @@ use crate::place::entity::{Entity, SqEntity};
 use crate::place::sq::Sq;
 use crate::{History, Piece, Team};
 use std::io::{Error, ErrorKind, Result};
+use crate::SIZE;
 
 pub mod castling;
 pub mod history;
 pub mod piece;
 pub mod team;
+pub mod king_status;
 
 pub enum SqStatus {
     None,
@@ -14,26 +16,92 @@ pub enum SqStatus {
     Some(Sq),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum KingStatus {
-    Safe,
-    Check,
-    Mate,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Board {
     pub turn_order: Team,
     pub history: History,
-    pub board: [[Option<Entity>; 8]; 8],
+    pub board: [[Option<Entity>; SIZE]; SIZE],
     pub en_passant_target_square: Option<Sq>,
     pub halfmove_clock: usize,
     pub castling: castling::Castling,
 }
 
+/// Using FEN
+/// https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+impl From<String> for Board {
+    fn from(item: String) -> Self {
+        let mut board = Board::new();
+        board.board = [[None; SIZE]; SIZE];
+        let mut item = item.split_whitespace();
+
+        // Piece placement.
+        let section = item
+            .next()
+            .expect("Missing first section to decode FEN as Board");
+        let ranks = section.split('/');
+
+        for (i, rank) in ranks.enumerate() {
+            let mut file: usize = 0;
+            println!("[board/mod]: FEN rank: {}", rank);
+            for ch in rank.chars() {
+                match ch {
+                    'a'..='z' | 'A'..='Z' => {
+                        // Creat entity and populate on board.
+                        let entity: Entity = Entity::from(ch);
+                        let target: Sq = Sq::new(7 - i, file);
+                        board.place(target, entity);
+                        println!("[board/mod]: FEN Wants to place {:?} at {}", entity, target);
+                        file += 1;
+                    }
+                    '1'..='8' => match ch.to_digit(10) {
+                        Some(dig) => {
+                            // Skip 'dig' files.
+                            file += dig as usize;
+                        }
+                        None => panic!("invalid FEN indicator {}", ch),
+                    },
+                    _ => panic!("invalid FEN indicator {}", ch),
+                }
+            }
+        }
+        // Active color.
+        let section = item
+            .next()
+            .expect("Missing second section to decode FEN as Board");
+        board.turn_order = section.into();
+
+        // Castling availability.
+        let section = item
+            .next()
+            .expect("Missing third section to decode FEN as Board");
+        board.castling = section.into();
+
+        // En passant target square.
+        let section = item
+            .next()
+            .expect("Missing forth section to decode FEN as Board");
+        board.en_passant_target_square = match Sq::notation(section) {
+            Ok(sq) => Some(sq),
+            Err(_) => None,
+        };
+
+        // Halfmove clock.
+        let section = item
+            .next()
+            .expect("Missing fifth section to decode FEN as Board");
+
+        // Fullmove number.
+        let section = item
+            .next()
+            .expect("Missing sixth section to decode FEN as Board");
+
+        board
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
-        let mut board = [[None; 8]; 8];
+        let mut board = [[None; SIZE]; SIZE];
         let b = Team::Black;
         let w = Team::White;
 
@@ -72,7 +140,7 @@ impl Board {
     }
     #[cfg(test)]
     pub fn clear(&mut self) {
-        self.board = [[None; 8]; 8];
+        self.board = [[None; SIZE]; SIZE];
     }
     pub fn not_turn(&self) -> Team {
         self.turn_order.not()
@@ -178,8 +246,8 @@ impl Board {
     pub fn evaluation(&self) -> isize {
         // Get piece values of all entities for each team.
         let mut result: isize = 0;
-        for rank in 0..8 {
-            for file in 0..8 {
+        for rank in 0..SIZE {
+            for file in 0..SIZE {
                 let sq = Sq::new(rank, file);
                 if let Some(entity) = self.find(sq, None, None) {
                     match entity.team {
@@ -199,17 +267,18 @@ impl Board {
         // Specify u8 to be able to cast to char.
         let mut cur_empty_square: u8 = 0;
 
-        for rank in (0..8).rev() {
-            for file in 0..8 {
+        for rank in (0..SIZE).rev() {
+            for file in 0..SIZE {
                 let sq = Sq::new(rank, file);
                 if let Some(entity) = self.find(sq, None, None) {
                     if cur_empty_square > 0 {
                         res.push_str(&format!("{}", cur_empty_square));
                         cur_empty_square = 0;
                     }
+                    let team_label: &str = entity.kind.into();
                     match entity.team {
-                        Team::White => res.push_str(entity.kind.display()),
-                        Team::Black => res.push_str(&entity.kind.display().to_lowercase()),
+                        Team::White => res.push_str(team_label),
+                        Team::Black => res.push_str(&team_label.to_lowercase()),
                     };
                 } else {
                     cur_empty_square += 1;
@@ -465,6 +534,7 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::display;
     use crate::execute::*;
     use crate::run;
     #[test]
@@ -509,6 +579,21 @@ mod tests {
             board.fen(),
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string()
         );
+    }
+    #[test]
+    fn test_initial_from_fen() {
+        let board: Board = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            .to_string()
+            .into();
+        let expected_board = Board::new();
+        if board != expected_board {
+            display::present(&board);
+            assert_eq!(board.castling, expected_board.castling, "FEN: castling differed");
+            assert_eq!(board.halfmove_clock, expected_board.halfmove_clock, "FEN: halfmove_clock differed");
+            assert_eq!(board.en_passant_target_square, expected_board.en_passant_target_square, "FEN: en_passant_target_square differed");
+            assert_eq!(board.board, expected_board.board, "FEN: Board differed");
+
+        }
     }
     #[test]
     fn test_get_rooked() {

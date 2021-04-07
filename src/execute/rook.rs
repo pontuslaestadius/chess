@@ -70,6 +70,15 @@ pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> O
             return Some(sq);
         }
     }
+
+    // for [a, b] in &[[0, 1], [1, 0]] {
+    //     for c in 0..8 {
+    //         let target = Sq::new(c * a, c * b).union(from);
+    //         if let Some(sq) = board.legal_target(target, to, team, piece) {
+    //             return Some(sq);
+    //         }
+    //     }
+    // }
     None
 }
 

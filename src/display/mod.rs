@@ -13,9 +13,7 @@ pub fn present(board: &Board) {
                 print!(" {} ", row.len() - x);
             }
             let label: colored::ColoredString = match column {
-                Some(ent) => color_team(&ent.team, ent.kind.display())
-                    .to_string()
-                    .black(),
+                Some(ent) => color_team(&ent.team, ent.kind.into()).to_string().black(),
 
                 None => " ".black(),
             };

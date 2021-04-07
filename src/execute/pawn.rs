@@ -78,12 +78,12 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
     vec
 }
 
-pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, _piece: Piece) -> Option<Sq> {
+pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> Option<Sq> {
     // Locate suitable pawn
     for x in 0..8 {
         let from = Sq::new(x, from.letter.or(Some(to.letter)).unwrap());
-        if let Some(_entity) = board.find(from, Some(&board.turn_order), Some(Piece::Pawn)) {
-            let translations = get_translations(&board, from, team, Some(Piece::Pawn));
+        if let Some(_entity) = board.find(from, Some(&board.turn_order), Some(piece)) {
+            let translations = get_translations(&board, from, team, Some(piece));
             if translations.contains(&to) {
                 return Some(from);
             }

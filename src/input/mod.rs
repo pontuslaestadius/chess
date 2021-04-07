@@ -1,4 +1,4 @@
-use crate::{KingStatus, OptSq, Sq};
+use crate::Sq;
 use std::io;
 use std::io::{Error, ErrorKind, Result};
 use std::iter::Rev;
@@ -14,37 +14,10 @@ pub fn read() -> Result<String> {
     }
 }
 
-pub fn position_indicator(ch: char) -> OptSq {
-    // It has an rank/file indicator.
-    let mut opt_sq = OptSq::new();
-    match ch {
-        'a'..='h' => opt_sq.letter = Some(letter_index(ch).unwrap()),
-        '1'..='8' => {
-            if let Some(dig) = ch.to_digit(10) {
-                opt_sq.digit = Some(dig as usize - 1);
-            }
-        }
-        _ => panic!("invalid rank/file indicator {}", ch),
-    }
-    #[cfg(test)]
-    println!("[input/mod]: position_indicator: {:?} ", opt_sq);
-    opt_sq
-}
-
 pub fn letter_index(ch: char) -> Option<usize> {
     match ch.to_digit(18) {
         Some(x) => Some(x as usize - 10),
         None => None,
-    }
-}
-
-pub fn get_king_status(s: &str) -> KingStatus {
-    if s.contains('+') {
-        KingStatus::Check
-    } else if s.contains('#') {
-        KingStatus::Mate
-    } else {
-        KingStatus::Safe
     }
 }
 
@@ -119,44 +92,7 @@ mod tests {
         assert_eq!(letter_index('h'), Some(7), "'h' should be index 7");
         assert_eq!(letter_index('j'), None, "'j' should be out of bound");
     }
-    #[test]
-    fn test_position_indicator() {
-        assert_eq!(
-            position_indicator('a'),
-            OptSq {
-                digit: None,
-                letter: Some(0)
-            }
-        );
-        assert_eq!(
-            position_indicator('h'),
-            OptSq {
-                digit: None,
-                letter: Some(7)
-            }
-        );
-        assert_eq!(
-            position_indicator('f'),
-            OptSq {
-                digit: None,
-                letter: Some(5)
-            }
-        );
-        assert_eq!(
-            position_indicator('1'),
-            OptSq {
-                digit: Some(0),
-                letter: None
-            }
-        );
-        assert_eq!(
-            position_indicator('8'),
-            OptSq {
-                digit: Some(7),
-                letter: None
-            }
-        );
-    }
+
     #[test]
     fn test_to_index_pos_valid() -> Result<()> {
         assert_eq!(

@@ -9,14 +9,19 @@ use std::str::FromStr;
 use std::{thread, time};
 
 mod opponent;
+use crate::Args;
 use opponent::Opponent;
 
-pub fn manual_game_loop(white: String, black: String) -> io::Result<()> {
-    let white = Opponent::from_str(&white).unwrap().init();
-    let black = Opponent::from_str(&black).unwrap().init();
+pub fn manual_game_loop(args: Args) -> io::Result<()> {
+    let white = Opponent::from_str(&args.white).unwrap().init();
+    let black = Opponent::from_str(&args.black).unwrap().init();
     let short_dur = time::Duration::from_millis(120);
 
-    let mut board = Board::new();
+    let mut board = match args.fen {
+        Some(fen) => fen.into(),
+        None => Board::new(),
+    };
+
     display::present(&board);
     loop {
         thread::sleep(short_dur);

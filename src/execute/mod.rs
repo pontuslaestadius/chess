@@ -11,6 +11,7 @@ pub mod queen;
 pub mod rook;
 pub mod special;
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! run {
     ($board:ident, $( $x:expr ),* ) => {
@@ -28,16 +29,12 @@ macro_rules! run {
     };
 }
 
-fn locator(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> Option<Sq> {
-    match piece.get_locate()(&board, to, from, team, piece) {
-        Some(t) => Some(t),
-        None => None,
-    }
-}
-
-fn locator_from_char(board: &Board, to: Sq, from: OptSq, piece: char) -> Option<Sq> {
+fn locator(board: &Board, to: Sq, from: OptSq, piece: char) -> Option<Sq> {
     match Piece::from_char(piece) {
-        Some(p) => locator(board, to, from, board.turn_order, p),
+        Some(p) => match p.get_locate()(&board, to, from, board.turn_order, p) {
+            Some(t) => Some(t),
+            None => None,
+        },
         None => None,
     }
 }
@@ -49,11 +46,9 @@ pub enum EResult {
 }
 
 pub fn execute(mut board: &mut Board, input: Chars) -> Result<EResult> {
-    let str_input = input.as_str();
+    let str_input: &str = input.as_str();
     let mut input = input.rev();
-    let king_status = input::get_king_status(str_input);
-
-    // let in_check = board.in_check(board.turn_order);
+    let king_status: KingStatus = str_input.into();
 
     // FIXME: use rev chars.
     if str_input.contains('=') {
@@ -66,64 +61,38 @@ pub fn execute(mut board: &mut Board, input: Chars) -> Result<EResult> {
         return Ok(EResult::Ok);
     }
 
-    let target = input::chars_to_sq(&mut input)?;
-
-    #[cfg(test)]
-    println!(
-        "[execute/mod]: {:?} - target {:?} remaining {:?}",
-        str_input, target, input
-    );
+    let target: Sq = input::chars_to_sq(&mut input)?;
 
     let mut hold: Option<Sq> = None;
     let mut from: OptSq = OptSq::new();
 
     match input.next() {
         // Captures, piece moves, pawn moves with file indicator.
-        Some(next) => match locator_from_char(board, target, from, next) {
+        Some(next) => match locator(board, target, from, next) {
             Some(sq) => hold = Some(sq),
             None => {
                 let mut next = next;
                 // It's probably a take. cxd4, Baxd4, R4xd8 or something.
 
                 if next == 'x' {
-                    #[cfg(test)]
-                    println!("[execute/mod]: 'bout to cap");
                     // we can unwrap since a take will always have another input.
                     next = input.next().unwrap();
                 }
 
-                // It has an rank/file indicator, or is a pawn.
-                if Piece::from_char(next).is_none() {
-                    let next_after = input.next();
-                    // Pawn move, not an indicator.
-                    #[cfg(test)]
-                    println!("[execute/mod]: {:?} is a descriptor", next);
-                    from.overwrite(input::position_indicator(next));
-                    if let Some(n) = next_after {
-                        next = n;
+                // Check for rank and file indicators, or if it is a pawn.
+                for _ in 0..2 {
+                    if Piece::from_char(next).is_none() {
+                        from.overwrite(next.into());
+                        if let Some(n) = input.next() {
+                            next = n;
+                        }
                     }
                 }
 
-                // Check for second indicator.
-                if Piece::from_char(next).is_none() {
-                    let next_after = input.next();
-                    #[cfg(test)]
-                    println!("[execute/mod]: {:?} is 2nd descriptor", next);
-                    from.overwrite(input::position_indicator(next));
-                    if let Some(n) = next_after {
-                        next = n;
-                    }
-                }
-
-                match locator_from_char(board, target, from, next) {
-                    Some(sq) => hold = Some(sq),
-                    None => {
-                        // if let Some(f) = input::letter_index(next) {
-                        //     from.letter = Some(f)
-                        // };
-                        hold = pawn::locate(&board, target, from, board.turn_order, Piece::Pawn);
-                    }
-                }
+                hold = match locator(board, target, from, next) {
+                    Some(sq) => Some(sq),
+                    None => pawn::locate(&board, target, from, board.turn_order, Piece::Pawn),
+                };
             }
         },
         None => {
@@ -169,7 +138,6 @@ pub fn execute(mut board: &mut Board, input: Chars) -> Result<EResult> {
         _ => {
             if !did_i_check_them {
                 // Print some debug moves.
-
                 return Err(Error::new(
                     ErrorKind::Other,
                     "Your move went through, but your move did not check",

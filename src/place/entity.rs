@@ -17,3 +17,19 @@ impl Entity {
         Entity { kind, team }
     }
 }
+
+impl From<char> for Entity {
+    fn from(item: char) -> Self {
+        let team: Team = match item {
+            'a'..='z' => Team::Black,
+            'A'..='Z' => Team::White,
+            _ => panic!("Cannot decode Entity from char: {}", item),
+        };
+        let kind: Piece = item.into();
+        
+        Entity {
+            kind,
+            team,
+        }
+    }
+}

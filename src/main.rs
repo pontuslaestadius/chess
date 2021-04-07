@@ -12,14 +12,20 @@ mod place;
 use crate::board::history::History;
 use crate::board::piece::Piece;
 use crate::board::team::Team;
-use crate::board::{Board, KingStatus, SqStatus};
+use crate::board::king_status::KingStatus;
+use crate::board::{Board, SqStatus};
 use crate::place::entity::Entity;
 use crate::place::optsq::OptSq;
 use crate::place::sq::Sq;
 
+const SIZE: usize = 8;
+
 // With the "paw" feature enabled in structopt
 #[derive(structopt::StructOpt)]
-struct Args {
+pub struct Args {
+    /// FEN formatted Board.
+    #[structopt(long = "fen")]
+    fen: Option<String>,
     /// Parses input as one or more PGN(s), and execute them.
     #[structopt(long = "pgn")]
     pgn: Option<String>,
@@ -35,6 +41,6 @@ struct Args {
 fn main(args: Args) -> std::io::Result<()> {
     match args.pgn {
         Some(pgn) => game_loop::automatic_game_loop(pgn),
-        None => game_loop::manual_game_loop(args.white, args.black),
+        None => game_loop::manual_game_loop(args),
     }
 }

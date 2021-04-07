@@ -3,6 +3,7 @@ use std::ops::{Add, Sub};
 use std::{char, cmp, fmt};
 
 use crate::OptSq;
+use crate::SIZE;
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Sq {
@@ -25,7 +26,7 @@ impl Sq {
     }
     #[allow(dead_code)]
     pub fn can_add(&self, oth: &Sq) -> bool {
-        self.digit + oth.digit < 8 && self.letter + oth.letter < 8
+        self.digit + oth.digit < SIZE && self.letter + oth.letter < SIZE
     }
     #[allow(dead_code)]
     pub fn can_sub(&self, oth: &Sq) -> bool {
@@ -46,7 +47,7 @@ impl Sq {
             Some(c) => c,
             None => return Err(Error::new(ErrorKind::Other, "len was 1, must be 2")),
         };
-        let file = match file.to_digit(18) {
+        let file = match file.to_digit(10 + SIZE as u32) {
             Some(d) => d as usize - 10,
             None => return Err(Error::new(ErrorKind::Other, "not letter")),
         };

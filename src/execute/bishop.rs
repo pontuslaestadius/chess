@@ -1,5 +1,7 @@
 use crate::{Board, OptSq, Piece, Sq, SqStatus, Team};
 
+const PATTERN: [[isize; 2]; 4] = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+
 pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece>) -> Vec<Sq> {
     let mut vec = Vec::new();
 
@@ -27,24 +29,11 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
         }
     };
 
-    for c in 1..8 {
-        if !lambda(c, c) {
-            break;
-        }
-    }
-    for c in 1..8 {
-        if !lambda(-c, -c) {
-            break;
-        }
-    }
-    for c in 1..8 {
-        if !lambda(-c, c) {
-            break;
-        }
-    }
-    for c in 1..8 {
-        if !lambda(c, -c) {
-            break;
+    for [a, b] in &PATTERN {
+        for c in 1..8 {
+            if !lambda(c * a, c * b) {
+                break;
+            }
         }
     }
 
@@ -65,32 +54,13 @@ pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> O
         SqStatus::None
     };
 
-    for c in 1..8 {
-        match lambda(c, c) {
-            SqStatus::Some(sq) => return Some(sq),
-            SqStatus::Blocked => break,
-            SqStatus::None => (),
-        }
-    }
-    for c in 1..8 {
-        match lambda(-c, -c) {
-            SqStatus::Some(sq) => return Some(sq),
-            SqStatus::Blocked => break,
-            SqStatus::None => (),
-        }
-    }
-    for c in 1..8 {
-        match lambda(-c, c) {
-            SqStatus::Some(sq) => return Some(sq),
-            SqStatus::Blocked => break,
-            SqStatus::None => (),
-        }
-    }
-    for c in 1..8 {
-        match lambda(c, -c) {
-            SqStatus::Some(sq) => return Some(sq),
-            SqStatus::Blocked => break,
-            SqStatus::None => (),
+    for [a, b] in &PATTERN {
+        for c in 1..8 {
+            match lambda(c * a, c * b) {
+                SqStatus::Some(sq) => return Some(sq),
+                SqStatus::Blocked => break,
+                SqStatus::None => (),
+            }
         }
     }
 
