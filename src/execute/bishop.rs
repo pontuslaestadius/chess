@@ -42,14 +42,11 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
 
 pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> Option<Sq> {
     let lambda = |rank: isize, file: isize| -> SqStatus {
-        let i_rank = to.digit as isize + rank as isize;
-        let i_file = to.letter as isize + file as isize;
-        if !Sq::valid_idx(i_rank, i_file) {
-            return SqStatus::Blocked;
-        };
-        let target = Sq::new(i_rank as usize, i_file as usize).union(from);
-        if let Some(sq) = board.legal_target(target, to, team, piece) {
-            return SqStatus::Some(sq);
+        if let Some(target) = to.mutate(rank, file) {
+            let target = target.union(from);
+            if let Some(sq) = board.legal_target(target, to, team, piece) {
+                return SqStatus::Some(sq);
+            }
         }
         SqStatus::None
     };

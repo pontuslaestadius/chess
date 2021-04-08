@@ -8,12 +8,11 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
 }
 
 pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> Option<Sq> {
-    if let Some(sq) = bishop::locate(&board, to, from, team, piece) {
-        return Some(sq);
-    };
-    if let Some(sq) = rook::locate(&board, to, from, team, piece) {
-        return Some(sq);
-    };
+    for locate in &[bishop::locate, rook::locate] {
+        if let Some(sq) = locate(&board, to, from, team, piece) {
+            return Some(sq);
+        };
+    }
     None
 }
 

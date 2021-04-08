@@ -16,7 +16,10 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
             Some(mov) => {
                 // Only pawn moves that moved 2 squares.
                 let two_or_not_to_two = isize::abs(mov.from.digit as isize - mov.to.digit as isize);
-                if mov.piece == Piece::Pawn && two_or_not_to_two == 2 {
+                if mov.piece == Piece::Pawn
+                    && two_or_not_to_two == 2
+                    && board.en_passant_target_square.is_some()
+                {
                     #[cfg(test)]
                     println!("[execute/pawn]: en passant allowed");
                     Some(Sq::new((mov.to.digit + mov.from.digit) / 2, mov.to.letter))

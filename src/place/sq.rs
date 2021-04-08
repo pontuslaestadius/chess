@@ -11,12 +11,6 @@ pub struct Sq {
     pub letter: usize,
 }
 
-// #[derive(Clone, Copy, PartialEq)]
-// pub strict WeightedSq {
-//     sq: sq,
-//     weight: usize,
-// }
-
 impl Sq {
     pub fn new(digit: usize, letter: usize) -> Self {
         Sq {
@@ -75,10 +69,10 @@ impl Sq {
     pub fn mutate(&self, rank: isize, file: isize) -> Option<Sq> {
         let i_rank: isize = self.digit as isize + rank as isize;
         let i_file: isize = self.letter as isize + file as isize;
-        if !Sq::valid_idx(i_rank, i_file) {
-            return None;
-        };
-        Some(Sq::new(i_rank as usize, i_file as usize))
+        match Sq::valid_idx(i_rank, i_file) {
+            true => Some(Sq::new(i_rank as usize, i_file as usize)),
+            false => None,
+        }
     }
     pub fn get_file_char(&self) -> char {
         (97 + self.letter as u8) as char

@@ -22,9 +22,6 @@ pub fn letter_index(ch: char) -> Option<usize> {
 }
 
 pub fn to_index_pos(chars: &mut Rev<Chars>) -> Result<[usize; 2]> {
-    // #[cfg(test)]
-    // println!("[input/mod]: {:?}", chars);
-
     let mut digit_raw = match chars.next() {
         Some(d) => d,
         None => {
@@ -35,7 +32,6 @@ pub fn to_index_pos(chars: &mut Rev<Chars>) -> Result<[usize; 2]> {
         }
     };
 
-    // TODO: Ignore checks and mate for now, implement later.
     match digit_raw {
         '+' | '#' => {
             digit_raw = match chars.next() {

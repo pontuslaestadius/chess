@@ -43,6 +43,12 @@ pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> O
         if let Some(sq) = board.legal_target(target, to, team, piece) {
             return Some(sq);
         };
+
+        // if let Some(target) = to.mutate(check_rank, check_file) {
+        //     if let Some(sq) = board.legal_target(target, to, team, piece) {
+        //         return Some(sq);
+        //     };
+        // }
     }
 
     None
