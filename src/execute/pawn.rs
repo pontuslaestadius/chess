@@ -1,55 +1,36 @@
-use crate::{Board, OptSq, Piece, Sq, Team};
+use crate::{Board, OptSq, Piece, Sq, SqLike, Team};
 
-pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece>) -> Vec<Sq> {
-    let mut vec = Vec::new();
+pub fn get_translations<S: SqLike>(board: &Board, from: Sq, team: Team, piece: Piece) -> Vec<S> {
+    let mut vec: Vec<S> = Vec::new();
 
-    if board.find(from, Some(&team), piece).is_none() {
+    if board.find(from, Some(&team), Some(piece)).is_none() {
         return vec;
     }
 
-    let mut last_move: Option<Sq> = None;
+    let mut can_en_passant_to: Option<Sq> = None;
 
     // If current pawn move is in position to en passant.
     if team == Team::Black && from.digit == 3 || team == Team::White && from.digit == 4 {
-        // Get last move for opposite team.
-        last_move = match board.history.last(board.not_turn()) {
-            Some(mov) => {
-                // Only pawn moves that moved 2 squares.
-                let two_or_not_to_two = isize::abs(mov.from.digit as isize - mov.to.digit as isize);
-                if mov.piece == Piece::Pawn
-                    && two_or_not_to_two == 2
-                    && board.en_passant_target_square.is_some()
-                {
-                    #[cfg(test)]
-                    println!("[execute/pawn]: en passant allowed");
-                    Some(Sq::new((mov.to.digit + mov.from.digit) / 2, mov.to.letter))
-                } else {
-                    None
-                }
-            }
-            None => None,
-        };
+        if let Some(last_sq) = board.en_passant_target_square {
+            can_en_passant_to = Some(last_sq);
+        }
     }
 
-    let mut lambda = |digit, letter| {
-        let sq2 = Sq::new(digit, letter);
+    let mut lambda = |rank: isize, file: isize| {
+        if let Some(sq2) = Sq::try_into(rank, file) {
+            if let Some(en_pass_sq) = can_en_passant_to {
+                if sq2 == en_pass_sq {
+                    vec.push(S::into(sq2, Some(Piece::Pawn)));
+                    return;
+                }
+            };
 
-        // One peasant
-        if let Some(sq) = last_move {
-            #[cfg(test)]
-            println!("[execute/pawn]: sq2: {}, last_move {}", sq2, sq);
-            // If the capture sqaure is the one just occupied by the pawn, it is en passant.
-            if sq2 == sq {
-                vec.push(sq2);
-                return;
+            if let Some(entity) = board.get(sq2) {
+                if entity.team != team {
+                    vec.push(S::into(sq2, Some(entity.kind)));
+                }
             }
-        }
-
-        if let Some(entity) = board.get(sq2) {
-            if entity.team != team {
-                vec.push(sq2);
-            }
-        }
+        };
     };
 
     // check corners.
@@ -59,21 +40,16 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
     };
     let sq = Sq::new((from.digit as isize + mul) as usize, from.letter);
     // Check diagonals for captures.
-    // ioob checks.
-    if sq.letter > 0 {
-        lambda(sq.digit, sq.letter - 1);
-    }
-    if sq.letter < 7 {
-        lambda(sq.digit, sq.letter + 1);
-    }
+    lambda(sq.digit as isize, sq.letter as isize - 1);
+    lambda(sq.digit as isize, sq.letter as isize + 1);
 
     if board.find(sq, None, None).is_none() {
-        vec.push(sq);
+        vec.push(S::into(sq, None));
         // We can only go 2 squares if the first one is empty.
         if team == Team::Black && from.digit == 6 || team == Team::White && from.digit == 1 {
             let sq2 = Sq::new((from.digit as isize + 2isize * mul) as usize, from.letter);
             if board.find(sq2, None, None).is_none() {
-                vec.push(sq2);
+                vec.push(S::into(sq2, None));
             }
         }
     }
@@ -86,8 +62,7 @@ pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> O
     for x in 0..8 {
         let from = Sq::new(x, from.letter.or(Some(to.letter)).unwrap());
         if let Some(_entity) = board.find(from, Some(&board.turn_order), Some(piece)) {
-            let translations = get_translations(&board, from, team, Some(piece));
-            if translations.contains(&to) {
+            if get_translations(&board, from, team, piece).contains(&to) {
                 return Some(from);
             }
         }

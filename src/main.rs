@@ -10,13 +10,13 @@ mod input;
 mod place;
 
 use crate::board::history::History;
+use crate::board::king_status::KingStatus;
 use crate::board::piece::Piece;
 use crate::board::team::Team;
-use crate::board::king_status::KingStatus;
 use crate::board::{Board, SqStatus};
 use crate::place::entity::Entity;
 use crate::place::optsq::OptSq;
-use crate::place::sq::Sq;
+use crate::place::sq::{Sq, SqLike};
 
 const SIZE: usize = 8;
 

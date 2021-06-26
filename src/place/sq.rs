@@ -1,9 +1,31 @@
+use std::convert::TryInto;
 use std::io::{Error, ErrorKind, Result};
 use std::ops::{Add, Sub};
 use std::{char, cmp, fmt};
 
-use crate::OptSq;
-use crate::SIZE;
+use crate::{OptSq, Piece, SIZE};
+
+pub trait SqLike {
+    fn into(sq: Sq, piece: Option<Piece>) -> Self;
+    fn get_rank(&self) -> usize;
+    fn get_file(&self) -> usize;
+    fn get_sq(&self) -> &Sq;
+}
+
+impl SqLike for Sq {
+    fn into(sq: Sq, _piece: Option<Piece>) -> Self {
+        sq
+    }
+    fn get_rank(&self) -> usize {
+        self.digit
+    }
+    fn get_file(&self) -> usize {
+        self.letter
+    }
+    fn get_sq(&self) -> &Sq {
+        self
+    }
+}
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Sq {
@@ -55,6 +77,12 @@ impl Sq {
         let rank = rank.into();
         let file = file.into();
         !(rank > 7 || rank < 0 || file > 7 || file < 0)
+    }
+    pub fn try_into(rank: isize, file: isize) -> Option<Sq> {
+        match Sq::valid_idx(rank, file) {
+            true => Some(Sq::new(rank as usize, file as usize)),
+            false => None,
+        }
     }
     pub fn union(&self, other: OptSq) -> Sq {
         let mut sq: Sq = *self;

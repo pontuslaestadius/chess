@@ -1,14 +1,18 @@
 use crate::place::entity::{Entity, SqEntity};
 use crate::place::sq::Sq;
-use crate::{History, Piece, Team};
-use std::io::{Error, ErrorKind, Result};
 use crate::SIZE;
+use crate::{History, Piece, Team};
+use state::*;
+use std::io::{Error, ErrorKind, Result};
+
+use std::convert::TryFrom;
 
 pub mod castling;
 pub mod history;
-pub mod piece;
-pub mod team;
 pub mod king_status;
+pub mod piece;
+pub mod state;
+pub mod team;
 
 pub enum SqStatus {
     None,
@@ -18,27 +22,38 @@ pub enum SqStatus {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Board {
+    pub state: BoardState,
     pub turn_order: Team,
     pub history: History,
     pub board: [[Option<Entity>; SIZE]; SIZE],
     pub en_passant_target_square: Option<Sq>,
-    pub halfmove_clock: usize,
     pub castling: castling::Castling,
+    pub fullmove: usize,
+    pub halfmove: usize,
 }
 
 /// Using FEN
 /// https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
-impl From<String> for Board {
-    fn from(item: String) -> Self {
+impl TryFrom<String> for Board {
+    type Error = Error;
+
+    fn try_from(item: String) -> Result<Self> {
         let mut board = Board::new();
         board.board = [[None; SIZE]; SIZE];
-        let mut item = item.split_whitespace();
+        let item: Vec<&str> = item.split_whitespace().into_iter().collect();
+
+        let expected_len = 6;
+        if item.len() != expected_len {
+            let msg = format!(
+                "Wrong number of space seperated arguments to decode FEN, expected {}, got {}",
+                expected_len,
+                item.len()
+            );
+            return Err(Error::new(ErrorKind::Other, msg));
+        }
 
         // Piece placement.
-        let section = item
-            .next()
-            .expect("Missing first section to decode FEN as Board");
-        let ranks = section.split('/');
+        let ranks = item[0].split('/');
 
         for (i, rank) in ranks.enumerate() {
             let mut file: usize = 0;
@@ -65,37 +80,24 @@ impl From<String> for Board {
             }
         }
         // Active color.
-        let section = item
-            .next()
-            .expect("Missing second section to decode FEN as Board");
-        board.turn_order = section.into();
+        board.turn_order = item[1].into();
 
         // Castling availability.
-        let section = item
-            .next()
-            .expect("Missing third section to decode FEN as Board");
-        board.castling = section.into();
+        board.castling = item[2].into();
 
         // En passant target square.
-        let section = item
-            .next()
-            .expect("Missing forth section to decode FEN as Board");
-        board.en_passant_target_square = match Sq::notation(section) {
+        board.en_passant_target_square = match Sq::notation(item[3]) {
             Ok(sq) => Some(sq),
             Err(_) => None,
         };
 
         // Halfmove clock.
-        let section = item
-            .next()
-            .expect("Missing fifth section to decode FEN as Board");
+        // item[4]
 
         // Fullmove number.
-        let section = item
-            .next()
-            .expect("Missing sixth section to decode FEN as Board");
+        // item[5]
 
-        board
+        Ok(board)
     }
 }
 
@@ -105,29 +107,25 @@ impl Board {
         let b = Team::Black;
         let w = Team::White;
 
-        board[7][0] = Some(Entity::new(Piece::Rook, b));
-        board[7][1] = Some(Entity::new(Piece::Knight, b));
-        board[7][2] = Some(Entity::new(Piece::Bishop, b));
-        board[7][3] = Some(Entity::new(Piece::Queen, b));
-        board[7][4] = Some(Entity::new(Piece::King, b));
-        board[7][5] = Some(Entity::new(Piece::Bishop, b));
-        board[7][6] = Some(Entity::new(Piece::Knight, b));
-        board[7][7] = Some(Entity::new(Piece::Rook, b));
-        board[0][0] = Some(Entity::new(Piece::Rook, w));
-        board[0][1] = Some(Entity::new(Piece::Knight, w));
-        board[0][2] = Some(Entity::new(Piece::Bishop, w));
-        board[0][3] = Some(Entity::new(Piece::Queen, w));
-        board[0][4] = Some(Entity::new(Piece::King, w));
-        board[0][5] = Some(Entity::new(Piece::Bishop, w));
-        board[0][6] = Some(Entity::new(Piece::Knight, w));
-        board[0][7] = Some(Entity::new(Piece::Rook, w));
+        for (team, rank) in &[(Team::White, 0usize), (Team::Black, (SIZE - 1) as usize)] {
+            board[*rank][0] = Some(Entity::new(Piece::Rook, *team));
+            board[*rank][1] = Some(Entity::new(Piece::Knight, *team));
+            board[*rank][2] = Some(Entity::new(Piece::Bishop, *team));
+            board[*rank][3] = Some(Entity::new(Piece::Queen, *team));
+            board[*rank][4] = Some(Entity::new(Piece::King, *team));
+            board[*rank][5] = Some(Entity::new(Piece::Bishop, *team));
+            board[*rank][6] = Some(Entity::new(Piece::Knight, *team));
+            board[*rank][7] = Some(Entity::new(Piece::Rook, *team));
+        }
 
-        for n in 0..8 {
+        for n in 0..SIZE {
             board[1][n] = Some(Entity::new(Piece::Pawn, w));
             board[6][n] = Some(Entity::new(Piece::Pawn, b));
         }
         Board {
-            halfmove_clock: 0,
+            state: BoardState::new(),
+            halfmove: 0,
+            fullmove: 1,
             en_passant_target_square: None,
             castling: castling::Castling::new(),
             turn_order: Team::White,
@@ -167,10 +165,10 @@ impl Board {
         // Move was alright, register it.
         // FIXME: should probably be a move, self = other.
         self.board = other.board;
-        self.turn_order = other.turn_order;
+        self.turn_order = other.turn();
         self.castling = other.castling;
         self.en_passant_target_square = other.en_passant_target_square;
-        self.halfmove_clock = other.halfmove_clock;
+        self.halfmove = other.halfmove;
 
         #[cfg(test)]
         println!("[board/mod]: {} -> {}", from, to);
@@ -179,7 +177,7 @@ impl Board {
     }
     pub fn can_translate(&self, from: Sq, to: Sq) -> bool {
         let mut other = self.clone();
-        let turn = other.turn_order;
+        let turn = other.turn();
         let res = other.translate(from, to);
         if res.is_err() {
             #[cfg(test)]
@@ -190,25 +188,12 @@ impl Board {
     }
 
     pub fn in_check(&self, team: Team) -> bool {
-        // #[cfg(test)]
-        // println!("checking if {:?} is in check.", team);
-
-        let opposite_team = match team {
-            Team::White => Team::Black,
-            Team::Black => Team::White,
-        };
-
-        let entities = self.find_by_team(opposite_team);
+        let entities = self.find_by_team(team.not());
         for sq_entity in entities {
             let sq = sq_entity.sq;
             let piece = sq_entity.entity.kind;
-            let translations = piece.get_translations()(&self, sq, opposite_team, Some(piece));
-
-            // #[cfg(test)]
-            // println!("{} {:?}: {:?}", sq, piece, translations);
+            let translations = piece.get_translations()(&self, sq, team.not(), piece);
             for t in translations {
-                // #[cfg(test)]
-                // println!("Searching for {}'s King at {} ", team, t);
                 if let Some(_ent) = self.find(t, Some(&team), Some(Piece::King)) {
                     #[cfg(test)]
                     println!(
@@ -219,8 +204,6 @@ impl Board {
                 }
             }
         }
-        #[cfg(test)]
-        println!("{:?} is not in check.", team);
         false
     }
 
@@ -233,7 +216,7 @@ impl Board {
         self.find_by_team_closure(team, &|sq_entity: SqEntity| -> bool {
             let sq = sq_entity.sq;
             let piece = sq_entity.entity.kind;
-            let translations = piece.get_translations()(&other, sq, team, Some(piece));
+            let translations = piece.get_translations()(&other, sq, team, piece);
             for t in translations {
                 if other.can_translate(sq, t) {
                     return false;
@@ -264,10 +247,8 @@ impl Board {
     pub fn fen(&self) -> String {
         let mut res = String::new();
 
-        // Specify u8 to be able to cast to char.
-        let mut cur_empty_square: u8 = 0;
-
         for rank in (0..SIZE).rev() {
+            let mut cur_empty_square: u8 = 0;
             for file in 0..SIZE {
                 let sq = Sq::new(rank, file);
                 if let Some(entity) = self.find(sq, None, None) {
@@ -286,34 +267,24 @@ impl Board {
             }
             if cur_empty_square > 0 {
                 res.push_str(&format!("{}", cur_empty_square));
-                cur_empty_square = 0;
             }
-            // Last row does not need a row delimitor.
+            // Last row does not need a delimitor.
             if rank != 0 {
                 res.push('/');
             }
         }
-        res.push(' ');
+        res.push_str(&format!(
+            " {} {} ",
+            self.turn().abrev().to_lowercase(),
+            self.castling.fen()
+        ));
 
-        // Active color
-        res.push_str(&self.turn_order.abrev().to_lowercase());
-        res.push(' ');
+        match self.en_passant_target_square {
+            None => res.push('-'),
+            Some(sq) => res.push_str(&format!("{}", sq)),
+        }
 
-        // Castling availability
-        res.push_str(&self.castling.fen());
-        res.push(' ');
-
-        // En passant target square in algebraic notatio
-        res.push_str("-");
-        res.push(' ');
-
-        // number of halfmoves since the last capture or pawn advance
-        res.push_str(&format!("{}", self.halfmove_clock));
-        res.push(' ');
-
-        // Fullmove number: The number of the full move. It starts at 1, and is incremented after Black's move.
-        res.push_str(&format!("{}", self.history.len(Team::Black) + 1));
-
+        res.push_str(&format!(" {} {}", self.halfmove, self.fullmove));
         res
     }
 
@@ -325,7 +296,7 @@ impl Board {
         self.find_by_team_closure(team, &|sq_entity: SqEntity| -> bool {
             let sq = sq_entity.sq;
             let piece = sq_entity.entity.kind;
-            let translations = piece.get_translations()(&other, sq, team, Some(piece));
+            let translations = piece.get_translations()(&other, sq, team, piece);
             for t in translations {
                 if other.can_translate(sq, t) {
                     #[cfg(test)]
@@ -344,11 +315,8 @@ impl Board {
 
         let from_entity = match self.get(from) {
             Some(ent) => {
-                if ent.team != self.turn_order {
-                    let msg = format!(
-                        "illegal move, (piece: {}, turn: {})",
-                        ent.team, self.turn_order
-                    );
+                if ent.team != self.turn() {
+                    let msg = format!("illegal move, (piece: {}, turn: {})", ent.team, self.turn());
                     return Err(Error::new(ErrorKind::Other, msg));
                 }
                 ent
@@ -378,12 +346,12 @@ impl Board {
                     label.push(from.get_file_char());
                 }
                 label.push_str("x");
-                self.halfmove_clock = 0;
+                self.halfmove = 0;
                 self.board[to.digit][to.letter] = self.board[from.digit][from.letter];
                 self.board[from.digit][from.letter] = None;
             }
             None => {
-                self.halfmove_clock += 1;
+                self.halfmove += 1;
                 // Check if en passant
                 // If it was a capture move but didn't land on an occupied square.
                 #[cfg(test)]
@@ -415,6 +383,10 @@ impl Board {
                 self.board[from.digit][from.letter] = None;
             }
         };
+        // Increment fullmove
+        if self.turn_order == Team::Black {
+            self.fullmove += 1;
+        }
         self.turn_order = match self.turn_order {
             Team::White => Team::Black,
             Team::Black => Team::White,
@@ -424,7 +396,7 @@ impl Board {
         // Only pawn moves that moved 2 squares.
 
         if from_entity.kind == Piece::Pawn {
-            self.halfmove_clock = 0;
+            self.halfmove = 0;
             let two_or_not_to_two = isize::abs(from.digit as isize - to.digit as isize);
             #[cfg(test)]
             println!(
@@ -449,7 +421,7 @@ impl Board {
 
     pub fn legal_target(&self, from: Sq, to: Sq, team: Team, piece: Piece) -> Option<Sq> {
         if let Some(_entity) = self.find(from, Some(&team), Some(piece)) {
-            let translations = piece.get_translations()(&self, from, team, Some(piece));
+            let translations = piece.get_translations()(&self, from, team, piece);
             if translations.contains(&to) && self.can_translate(from, to) {
                 return Some(from);
             }
@@ -466,11 +438,6 @@ impl Board {
     pub fn find(&self, sq: Sq, team: Option<&Team>, piece: Option<Piece>) -> Option<Entity> {
         let mut res = false;
         if let Some(entity) = self.get(sq) {
-            // #[cfg(test)]
-            // println!(
-            //     "Find: sq: {:?}, team: {:?}, piece: {:?} -> {:?}",
-            //     sq, team, piece, entity
-            // );
             if team.is_none() && piece.is_none() {
                 return Some(entity);
             }
@@ -537,6 +504,7 @@ mod tests {
     use crate::display;
     use crate::execute::*;
     use crate::run;
+    use std::convert::TryInto;
     #[test]
     fn test_new_board() {
         Board::new();
@@ -553,19 +521,19 @@ mod tests {
     #[test]
     fn test_halfclock() {
         let mut board = Board::new();
-        assert_eq!(board.halfmove_clock, 0);
+        assert_eq!(board.halfmove, 0);
         run!(board, "e4");
-        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        assert_eq!(board.halfmove, 0); // Pawn move resets
         run!(board, "Nc6");
-        assert_eq!(board.halfmove_clock, 1); // Knight move increments
+        assert_eq!(board.halfmove, 1); // Knight move increments
         run!(board, "e5");
-        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        assert_eq!(board.halfmove, 0); // Pawn move resets
         run!(board, "f6");
-        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        assert_eq!(board.halfmove, 0); // Pawn move resets
         run!(board, "exf6");
-        assert_eq!(board.halfmove_clock, 0); // Pawn move resets
+        assert_eq!(board.halfmove, 0); // Pawn move resets
         run!(board, "Nf6");
-        assert_eq!(board.halfmove_clock, 0); // Capture resets
+        assert_eq!(board.halfmove, 0); // Capture resets
     }
     #[test]
     fn test_evaluation() {
@@ -584,15 +552,24 @@ mod tests {
     fn test_initial_from_fen() {
         let board: Board = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
             .to_string()
-            .into();
+            .try_into()
+            .unwrap();
         let expected_board = Board::new();
         if board != expected_board {
             display::present(&board);
-            assert_eq!(board.castling, expected_board.castling, "FEN: castling differed");
-            assert_eq!(board.halfmove_clock, expected_board.halfmove_clock, "FEN: halfmove_clock differed");
-            assert_eq!(board.en_passant_target_square, expected_board.en_passant_target_square, "FEN: en_passant_target_square differed");
+            assert_eq!(
+                board.castling, expected_board.castling,
+                "FEN: castling differed"
+            );
+            assert_eq!(
+                board.halfmove, expected_board.halfmove,
+                "FEN: halfmove differed"
+            );
+            assert_eq!(
+                board.en_passant_target_square, expected_board.en_passant_target_square,
+                "FEN: en_passant_target_square differed"
+            );
             assert_eq!(board.board, expected_board.board, "FEN: Board differed");
-
         }
     }
     #[test]

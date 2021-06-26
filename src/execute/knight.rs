@@ -1,11 +1,11 @@
-use crate::{Board, OptSq, Piece, Sq, Team};
+use crate::{Board, OptSq, Piece, Sq, SqLike, Team};
 
 const RANKS: [isize; 8] = [2, 2, 1, -1, -2, -2, 1, -1];
 const FILES: [isize; 8] = [-1, 1, 2, 2, -1, 1, -2, -2];
 
-pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece>) -> Vec<Sq> {
-    let mut vec = Vec::new();
-    if board.find(from, Some(&team), piece).is_none() {
+pub fn get_translations<S: SqLike>(board: &Board, from: Sq, team: Team, piece: Piece) -> Vec<S> {
+    let mut vec: Vec<S> = Vec::new();
+    if board.find(from, Some(&team), Some(piece)).is_none() {
         return vec;
     }
     for idx in 0..8 {
@@ -14,10 +14,10 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
             None => continue,
         };
         match board.find(target, None, None) {
-            None => vec.push(target),
+            None => vec.push(S::into(target, None)),
             Some(entity) => {
                 if entity.team != team {
-                    vec.push(target);
+                    vec.push(S::into(target, Some(entity.kind)));
                 }
             }
         }
@@ -35,20 +35,11 @@ pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> O
             Some(x) => x as isize,
             None => to.letter as isize + FILES[idx],
         };
-        if !Sq::valid_idx(check_rank, check_file) {
-            continue;
+        if let Some(target) = Sq::try_into(check_rank, check_file) {
+            if let Some(sq) = board.legal_target(target, to, team, piece) {
+                return Some(sq);
+            };
         }
-
-        let target = Sq::new(check_rank as usize, check_file as usize);
-        if let Some(sq) = board.legal_target(target, to, team, piece) {
-            return Some(sq);
-        };
-
-        // if let Some(target) = to.mutate(check_rank, check_file) {
-        //     if let Some(sq) = board.legal_target(target, to, team, piece) {
-        //         return Some(sq);
-        //     };
-        // }
     }
 
     None
@@ -85,12 +76,7 @@ mod tests {
     fn test_Nf6() -> Result<()> {
         let mut board = Board::new();
         board.turn_order = Team::Black;
-        let trans = get_translations(
-            &board,
-            Sq::notation("g8")?,
-            board.turn_order,
-            Some(Piece::Knight),
-        );
+        let trans = get_translations(&board, Sq::notation("g8")?, board.turn_order, Piece::Knight);
         let target = Sq::notation("f6")?;
         assert!(trans.contains(&target), "translations: {:?}", trans);
 

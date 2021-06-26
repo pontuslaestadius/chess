@@ -80,7 +80,7 @@ impl Piece {
     }
     pub fn get_translations(
         &self,
-    ) -> &'static (dyn Fn(&Board, Sq, Team, Option<Piece>) -> Vec<Sq> + 'static) {
+    ) -> &'static (dyn Fn(&Board, Sq, Team, Piece) -> Vec<Sq> + 'static) {
         match self {
             Piece::Rook => &rook::get_translations,
             Piece::Bishop => &bishop::get_translations,

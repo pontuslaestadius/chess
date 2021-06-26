@@ -1,9 +1,9 @@
-use crate::{Board, OptSq, Piece, Sq, Team};
+use crate::{Board, OptSq, Piece, Sq, SqLike, Team};
 
-pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece>) -> Vec<Sq> {
-    let mut vec = Vec::new();
+pub fn get_translations<S: SqLike>(board: &Board, from: Sq, team: Team, piece: Piece) -> Vec<S> {
+    let mut vec: Vec<S> = Vec::new();
 
-    let team = match board.find(from, Some(&team), piece) {
+    let team = match board.find(from, Some(&team), Some(piece)) {
         Some(entity) => entity.team,
         None => return vec,
     };
@@ -12,13 +12,13 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
         let target = Sq::new(digit, letter);
         match board.find(target, None, None) {
             None => {
-                vec.push(target);
+                vec.push(S::into(target, None));
                 true
             }
             Some(entity) => {
                 // If it is an enemy piece, we can capture it, but then not go further as it is blocking.
                 if entity.team != team {
-                    vec.push(target);
+                    vec.push(S::into(target, Some(entity.kind)));
                 }
                 false
             }
@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn test_rook_no_translations() {
         let board = Board::new();
-        let trans = get_translations(&board, Sq::new(0, 0), board.turn_order, Some(Piece::Rook));
+        let trans: Vec<Sq> = get_translations(&board, Sq::new(0, 0), board.turn_order, Piece::Rook);
         assert_eq!(trans, Vec::new());
     }
     #[test]
@@ -91,7 +91,7 @@ mod tests {
         let sq = Sq::new(0, 0);
         let team = Team::White;
         board.place(sq, Entity::new(Piece::Rook, team));
-        let trans = get_translations(&board, sq, board.turn_order, Some(Piece::Rook));
+        let trans: Vec<Sq> = get_translations(&board, sq, board.turn_order, Piece::Rook);
         assert_eq!(
             trans.len(),
             14,
@@ -108,7 +108,7 @@ mod tests {
         let team = Team::Black;
         board.turn_order = team;
         board.place(sq, Entity::new(Piece::Rook, team));
-        let trans = get_translations(&board, sq, board.turn_order, Some(Piece::Rook));
+        let trans: Vec<Sq> = get_translations(&board, sq, board.turn_order, Piece::Rook);
         assert_eq!(
             trans.len(),
             14,
@@ -125,7 +125,7 @@ mod tests {
         let team = Team::Black;
         board.turn_order = team;
         board.place(sq, Entity::new(Piece::Rook, team));
-        let trans = get_translations(&board, sq, board.turn_order, Some(Piece::Rook));
+        let trans: Vec<Sq> = get_translations(&board, sq, board.turn_order, Piece::Rook);
         assert_eq!(
             trans.len(),
             14,
@@ -148,7 +148,7 @@ mod tests {
         board.place(sq + Sq::new(0, 1), pawn);
         board.place(sq + Sq::new(1, 0), pawn);
 
-        let trans = get_translations(&board, sq, board.turn_order, Some(Piece::Rook));
+        let trans: Vec<Sq> = get_translations(&board, sq, board.turn_order, Piece::Rook);
         assert_eq!(
             trans.len(),
             0,
@@ -171,7 +171,7 @@ mod tests {
         board.place(sq + Sq::new(0, 2), pawn);
         board.place(sq + Sq::new(2, 0), pawn);
 
-        let trans = get_translations(&board, sq, board.turn_order, Some(Piece::Rook));
+        let trans: Vec<Sq> = get_translations(&board, sq, board.turn_order, Piece::Rook);
         assert_eq!(
             trans.len(),
             4,
@@ -193,7 +193,7 @@ mod tests {
         board.place(sq + Sq::new(0, 2), pawn);
         board.place(sq + Sq::new(2, 0), pawn);
 
-        let trans = get_translations(&board, sq, board.turn_order, Some(Piece::Queen));
+        let trans: Vec<Sq> = get_translations(&board, sq, board.turn_order, Piece::Queen);
         assert_eq!(trans.len(), 0, "shouldn't be able to move enemy Rook");
     }
     #[test]
@@ -210,7 +210,7 @@ mod tests {
         board.place(sq + Sq::new(0, 2), pawn);
         board.place(sq + Sq::new(2, 0), pawn);
 
-        let trans = get_translations(&board, sq, board.turn_order, Some(Piece::Rook));
+        let trans: Vec<Sq> = get_translations(&board, sq, board.turn_order, Piece::Rook);
         assert_eq!(
             trans.len(),
             8,

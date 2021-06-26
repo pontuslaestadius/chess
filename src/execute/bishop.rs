@@ -1,11 +1,11 @@
-use crate::{Board, OptSq, Piece, Sq, SqStatus, Team};
+use crate::{Board, OptSq, Piece, Sq, SqLike, SqStatus, Team, SIZE};
 
 const PATTERN: [[isize; 2]; 4] = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
 
-pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece>) -> Vec<Sq> {
+pub fn get_translations<S: SqLike>(board: &Board, from: Sq, team: Team, piece: Piece) -> Vec<S> {
     let mut vec = Vec::new();
 
-    let team = match board.find(from, Some(&team), piece) {
+    let team = match board.find(from, Some(&team), Some(piece)) {
         Some(entity) => entity.team,
         None => return vec,
     };
@@ -17,12 +17,12 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
         };
         match board.find(target, None, None) {
             None => {
-                vec.push(target);
+                vec.push(S::into(target, None));
                 true
             }
             Some(entity) => {
                 if entity.team != team {
-                    vec.push(target);
+                    vec.push(S::into(target, Some(entity.kind)));
                 }
                 false
             }
@@ -30,7 +30,7 @@ pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece
     };
 
     for [a, b] in &PATTERN {
-        for c in 1..8 {
+        for c in 1..SIZE as isize {
             if !lambda(c * a, c * b) {
                 break;
             }
@@ -52,7 +52,7 @@ pub fn locate(board: &Board, to: Sq, from: OptSq, team: Team, piece: Piece) -> O
     };
 
     for [a, b] in &PATTERN {
-        for c in 1..8 {
+        for c in 1..SIZE as isize {
             match lambda(c * a, c * b) {
                 SqStatus::Some(sq) => return Some(sq),
                 SqStatus::Blocked => break,

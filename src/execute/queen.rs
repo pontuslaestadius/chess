@@ -1,8 +1,8 @@
 use crate::execute::{bishop, rook};
-use crate::{Board, OptSq, Piece, Sq, Team};
+use crate::{Board, OptSq, Piece, Sq, SqLike, Team};
 
-pub fn get_translations(board: &Board, from: Sq, team: Team, piece: Option<Piece>) -> Vec<Sq> {
-    let mut vec = bishop::get_translations(board, from, team, piece);
+pub fn get_translations<S: SqLike>(board: &Board, from: Sq, team: Team, piece: Piece) -> Vec<S> {
+    let mut vec: Vec<S> = bishop::get_translations(board, from, team, piece);
     vec.append(&mut rook::get_translations(board, from, team, piece));
     vec
 }

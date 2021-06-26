@@ -1,0 +1,111 @@
+[{
+    "name": "King's Pawn Opening",
+    "reply": "e4",
+    "children": [{
+            "name": "Scandinavian Defense",
+            "reply": "d5",
+            "children": [{
+                "name": "Scandinavian Defense: 2.exd5",
+                "reply": "exd5",
+                "children": [{
+                    "name": "Scandinavian Defense: Mieses-Kotrč Variation",
+                    "reply": "Qxd5",
+                    "children": [{
+                        "name": "Scandinavian Defense: Mieses-Kotrč Variation, 3.Nc3",
+                        "reply": "Nc3",
+                        "children": [{
+                            "name": "Scandinavian Defense: Mieses-Kotrč Variation, Main Line",
+                            "reply": "Qa5"
+                        }]
+                    }]
+                }]
+            }]
+        },
+        {
+            "name": "King's Pawn Opening 1...e5",
+            "reply": "e5",
+            "children": [{
+                    "name": "King's Gambit",
+                    "reply": "f4"
+                },
+                {
+                    "name": "Center Game",
+                    "reply": "d5"
+                },
+                {
+                    "name": "King's Pawn Opening: Leonardis Variation",
+                    "reply": "d3"
+                },
+                {
+                    "name": "King's Pawn Opening: King's Knight Variation",
+                    "reply": "Nf3",
+                    "children": [{
+                        "name": "King's Pawn Opening: King's Knight Variation, 2..Nc6",
+                        "reply": "Nc6",
+                        "children": [{
+                            "name": "Ruy López Opening",
+                            "reply": "Bb5",
+                            "children": [{
+                                "name": "Ruy López Opening: Morphy Defense",
+                                "reply": "a6",
+                                "children": [{
+                                    "name": "Ruy López Opening: Morphy Defense, Columbus Variation",
+                                    "reply": "Ba4",
+                                    "children": [{
+                                        "name": "Ruy López Opening: Morphy Defense, Columbus Variation, 4...Nf6",
+                                        "reply": "Nf6",
+                                        "children": [{
+                                            "name": "Ruy López Opening: Morphy Defense, Columbus Variation, 4...Nf6 5.O-O",
+                                            "reply": "O-O",
+                                            "children": [{
+                                                "name": "Ruy López Opening: Morphy Defense, Closed",
+                                                "reply": "Be7",
+                                                "children": [{
+                                                    "name": "Ruy López Opening: Morphy Defense, Closed, 6.Re1",
+                                                    "reply": "Re1",
+                                                    "children": [{
+                                                        "name": "Ruy López Opening: Morphy Defense, Closed, 6.Re1 b5",
+                                                        "reply": "b5",
+                                                        "children": [{
+                                                            "name": "Ruy López Opening: Morphy Defense, Closed, 6.Re1 b5 7.Bb3",
+                                                            "reply": "Bb3"
+                                                        }]
+                                                    }]
+                                                }]
+                                            }]
+                                        }]
+                                    }]
+                                }]
+                            }]
+                        }]
+                    }]
+                },
+                {
+                    "name": "Vienna Game",
+                    "reply": "Nc3",
+                    "children": [{
+                        "name": "Vienna Game: Falkbeer Variation",
+                        "reply": "Nf6",
+                        "children": [{
+                                "name": "Petrov's Defense: Three Knights Game",
+                                "reply": "Nc6"
+                            },
+                            {
+                                "name": "Vienna Game: Falkbeer, Mieses Variation",
+                                "reply": "g3"
+                            },
+                            {
+                                "name": "Vienna Game: Falkbeer, Vienna Gambit",
+                                "reply": "f4"
+                            }
+                        ]
+                    }]
+                },
+                {
+                    "name": "Bishop's Opening",
+                    "reply": "Bc4"
+                }
+            ]
+        }
+    ]
+}]

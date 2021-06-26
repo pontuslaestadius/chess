@@ -6,7 +6,7 @@ use crate::Team;
 use std::io::Error;
 
 pub fn present(board: &Board) {
-    // print!("{}[2J", 27 as char);
+    print!("{}[2J", 27 as char);
     for (x, row) in board.board.iter().rev().enumerate() {
         for (y, column) in row.iter().enumerate() {
             if y == 0 {

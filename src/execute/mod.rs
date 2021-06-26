@@ -226,7 +226,7 @@ mod tests {
             for letter in 0..8 {
                 let sq = Sq::new(digit as usize, letter);
                 let translations =
-                    pawn::get_translations(&board, sq, board.turn_order, Some(Piece::Pawn));
+                    pawn::get_translations(&board, sq, board.turn_order, Piece::Pawn);
                 let msg = format!(
                     "{:?} pawn at {} has incorrect amount of translations ({:?})",
                     team, sq, translations
@@ -254,8 +254,8 @@ mod tests {
                 board.board[0][0] = Some(Entity::new(Piece::Pawn, Team::White));
                 board.board[1][0] = Some(Entity::new(Piece::Pawn, *t));
                 let sq = Sq::new(0, 0);
-                let translations =
-                    pawn::get_translations(&board, sq, board.turn_order, Some(Piece::Pawn));
+                let translations: Vec<Sq> =
+                    pawn::get_translations(&board, sq, board.turn_order, Piece::Pawn);
                 let msg = format!("{:?} pawn at {} should be blocked", team, sq);
                 assert_eq!(translations.len(), 0, "{}", msg);
             }
@@ -271,7 +271,7 @@ mod tests {
         board.place(black_sq, Entity::new(Piece::Pawn, Team::Black));
         let sq = Sq::new(0, 0);
         let team = Team::White;
-        let translations = pawn::get_translations(&board, sq, board.turn_order, Some(Piece::Pawn));
+        let translations = pawn::get_translations(&board, sq, board.turn_order, Piece::Pawn);
         let msg = format!(
             "{:?} pawn at {} should be able to capture Black pawn at {} ({:?})",
             team, sq, black_sq, translations
@@ -285,7 +285,8 @@ mod tests {
         board.clear();
         let sq = Sq::new(0, 0);
         board.place(sq, Entity::new(Piece::Bishop, Team::White));
-        let translations = pawn::get_translations(&board, sq, board.turn_order, Some(Piece::Pawn));
+        let translations: Vec<Sq> =
+            pawn::get_translations(&board, sq, board.turn_order, Piece::Pawn);
         assert_eq!(
             translations.len(),
             0,

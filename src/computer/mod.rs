@@ -70,8 +70,7 @@ impl Playable for Computer {
                 let sq_entity = moves.last().unwrap();
                 let sq = sq_entity.sq;
                 let piece = sq_entity.entity.kind;
-                let translations =
-                    piece.get_translations()(&board, sq, board.turn_order, Some(piece));
+                let translations = piece.get_translations()(&board, sq, board.turn_order, piece);
                 if !translations.is_empty() {
                     let last = translations.last().unwrap();
                     match board.checked_translate(sq, *last) {

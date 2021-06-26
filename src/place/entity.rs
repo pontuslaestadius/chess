@@ -26,10 +26,7 @@ impl From<char> for Entity {
             _ => panic!("Cannot decode Entity from char: {}", item),
         };
         let kind: Piece = item.into();
-        
-        Entity {
-            kind,
-            team,
-        }
+
+        Entity { kind, team }
     }
 }

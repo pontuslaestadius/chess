@@ -3,6 +3,7 @@ use crate::execute;
 use crate::input;
 use crate::input::pgn::Turn;
 use crate::{Board, Team};
+use std::convert::TryInto;
 use std::fs;
 use std::io;
 use std::str::FromStr;
@@ -18,7 +19,7 @@ pub fn manual_game_loop(args: Args) -> io::Result<()> {
     let short_dur = time::Duration::from_millis(120);
 
     let mut board = match args.fen {
-        Some(fen) => fen.into(),
+        Some(fen) => fen.try_into()?,
         None => Board::new(),
     };
 
@@ -43,6 +44,50 @@ pub fn manual_game_loop(args: Args) -> io::Result<()> {
 }
 
 pub fn automatic_game_loop(pgn: String) -> io::Result<()> {
+    let data = fs::read_to_string(pgn)?;
+    let mut pgns = Vec::new();
+
+    for (n, line) in data.lines().enumerate() {
+        if line != "" && !line.starts_with('[') {
+            pgns.push(input::pgn::parse(line));
+        }
+    }
+    println!("{} game(s) parsed", pgns.len());
+    let mut failed_count: usize = 0;
+    let mut successful_count: usize = 0;
+
+    for pgn in pgns {
+        let mut board = Board::new();
+        let len = pgn.len();
+        for (n, turn) in pgn.iter().enumerate() {
+            for action in [turn.white.as_ref(), turn.black.as_ref()].iter() {
+                match action {
+                    Some(string) => match execute::execute(&mut board, string.chars()) {
+                        Ok(eresult) => match eresult {
+                            execute::EResult::Ok => successful_count += 1,
+                            execute::EResult::Stalemate | execute::EResult::Checkmate => {
+                                if n + 1 != len {
+                                    failed_count += 1;
+                                }
+                            }
+                        },
+                        Err(_) => {
+                            failed_count += 1;
+                            break;
+                        }
+                    },
+                    None => continue,
+                }
+            }
+        }
+    }
+
+    println!("+{}/-{}", successful_count, failed_count);
+
+    Ok(())
+}
+
+pub fn legacy_automatic_game_loop(pgn: String) -> io::Result<()> {
     let short_dur = time::Duration::from_millis(20);
     // let long_dur = time::Duration::from_millis(2000);
     let data = fs::read_to_string(pgn).unwrap();
@@ -54,7 +99,8 @@ pub fn automatic_game_loop(pgn: String) -> io::Result<()> {
     let mut total_count: usize = 0;
     let debug = false;
 
-    for line in lines {
+    for (n, line) in lines.enumerate() {
+        // print!("{}[2J", 27 as char);
         #[cfg(debug)]
         meta.push(line);
         // filter meta data.
@@ -63,7 +109,7 @@ pub fn automatic_game_loop(pgn: String) -> io::Result<()> {
             if debug && line.starts_with("[FICSGames") {
                 // meta = Vec::new();
                 // thread::sleep(short_dur);
-                println!("{}. {}", game_count, line);
+                println!("{}. {}", n + 1, line);
             }
             continue;
         }
@@ -124,6 +170,7 @@ pub fn automatic_game_loop(pgn: String) -> io::Result<()> {
             }
         }
     }
+    // print!("{}[2J", 27 as char);
 
     println!(
         "{} games, {} moves (+{}/-{})",
